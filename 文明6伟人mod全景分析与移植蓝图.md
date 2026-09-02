@@ -1,834 +1,457 @@
-# 文明6 伟人 Mod 全景分析与移植蓝图
+# 文明6 伟人 Mod 完整效果事实提取
 
-> 数据来源：压缩包内 7 个 mod 的完整解包解析（313 条伟人记录、513 条本地化文本）+ 文明6 Wiki 原版数据（风云变幻规则，含巴比伦包等 DLC 标注）。
-> 用途：逐个伟人移植整合、替换原版效果、生成新 mod 的参考底稿。
+> 数据来源：/tmp/civ6mod/ 下 7 个 mod 的源数据文件（.sql/.xml）直接提取，用于补全《文明6伟人mod全景分析与移植蓝图》中被"…"截断或标"—"的记录。
+> 格式：伟人名 | 时代 | 完整效果（含数值）| 效果实现方式。
+> 所有效果文本均为 mod 文件中的英文原文翻译/直录，数值取自 ModifierArguments / SQL 参数。
 
----
+## 数据缺失/需说明的记录
 
-## 一、7 个 Mod 总览
-
-| Mod | 作者 | 性质 | 新增伟人 | 对原版的改动 | 冲突风险 |
-|---|---|---|---|---|---|
-| **Team PVP More GreatPeople 伟人补充包** (3497524344) | Nwflower（千川白浪） | 纯新增 | 66 位（将军10/科学家10/工程师10/商人8/作家23/音乐家5） | 不改原版伟人；可选配置改后期伟人价格 | 低，与任何mod兼容 |
-| **Nyguita More Great People 更多伟人** (2559462758) | Nyguita | 纯新增 | 88 位（除先知外每类11位）+ 77件巨作 | 不改原版伟人 | 低-中（伟人池膨胀） |
-| **Sumus Magnus Great People Expansion 伟人扩展** (2448605286) | Plati | 纯新增+联动 | ~70 位（将军16/统帅10/科学家14/工程师12/商人12/作家10，含可选开关）+ 建筑/资源/巨作 | 不改原版伟人 | 低-中 |
-| **Great Sovereigns 大统治者伟人** (2973448849) | Plati | **新增类别** | 32 位大统治者 + 专属项目/政策卡/万神殿/资源/建筑 | 新增 GREAT_PERSON_CLASS_GreatSovereigns 类；可选把拿破仑、古斯塔夫改列为统治者 | 中（改政府广场、可选改阿尔罕布拉宫） |
-| **Equally Great Scientists 平等伟人科学家** (1335152349) | AOM | **重平衡+替换** | 新增6位；重做全部24位原版科学家 | 删除原版科学家后重建；新增"科学巨作"系统；替换UI | 高（与一切改科学家的mod冲突） |
-| **Equally Great Engineers 平等伟人工程师** (1373931635) | AOM | **重平衡+替换** | 新增10位；重做原版工程师 | 删重建原版工程师；达·芬奇改为大艺术家；新增"工程巨作"系统 | 高 |
-| **Equally Great Merchants 平等伟人商人** (1356636218) | AOM | **重平衡+替换** | 新增11位；重做原版商人 | 删重建原版商人；新增6种奢侈品+5座专属建筑 | 高 |
-
-**三类 mod 的本质区别（移植时至关重要）：**
-
-1. **纯新增型**（Team PVP / Nyguita / Sumus Magnus）——只 INSERT 新行，不动原版数据。移植=抽取对应文件段即可，最安全。
-2. **新类别型**（Great Sovereigns）——新增一整套类（class）、单位、项目、政策卡、产出类型。移植单个统治者需要连带移植整套基础设施，**不能**只拷单人。
-3. **替换型**（AOM 平等三部曲）——先 `<Delete>` 原版伟人再重建，并替换 UI 文件。移植=直接替换原版同名伟人，正好契合你"替换原本伟人效果"的目标，但会破坏依赖原版伟人的其他mod。
+1. **Sumus Magnus - Francesco Bartolomeo Rastrelli**：源文件中**没有**普通工程师版定义，只有 Urban Complexity 联动版（`X_URBAN_COMPLEXITY_Rastrelli.xml`），且该版本中他的类别是**大艺术家**（工业时代），效果是政府广场建筑+4文化。文档中"工程师 | 工业 | —"的记录在源数据里不存在对应形态。
+2. **Team PVP 大音乐家**：分析文档所列"阿里斯托芬/沃尔夫拉姆/纪尧姆·德·马肖/蒙特威尔第/杜阿尔特·罗博"与 mod 实际文本**完全不符**。mod 实际 5 位音乐家是：俞伯牙、李隆基、关汉卿、汤应曾、托马斯·路易斯（见下文 §1）。
+3. **Team PVP 巨作数量**：文艺复兴作家每人只产 **1** 部巨作（SQL 中 `GreatWorksNum=1`），中世纪音乐家每人只产 **1** 部；其余时代作家/音乐家每人 2 部。文档"各产两部"的假设不成立。
+4. **Sumus Magnus - "西塞罗"（内部代号 CICERO）**：实际显示名为 **Mahbub ul Haq**（LOC 文本与 Pedia 均为此人），但两件巨作名是西塞罗的著作；"罗伯特·舒曼"（代号 DESCARTES）的巨作名则是笛卡尔的著作。作者人名与巨作混搭，如实记录。
+5. **Nyguita - Eumenes / Wallenstein / Túpac Yupanqui / Kountouriotis** 四人：源数据使用**原版**修饰器 `GREATPERSON_GOVERNOR_POINTS`（+1 总督头衔），mod 内无自定义文本。
+6. **Nyguita - Sergius Orata**：使用原版修饰器 `GREATPERSON_CITY_HOUSING_SMALL`（+2 住房）+ `GREATPERSON_CITY_AMENITIES_SMALL`（+1 宜居）。
+7. Sumus Magnus 的专属建筑（Templar Vault / Paper Maker / Chocolaterie）、专属资源（Pepper/Nutmeg/Faberge Egg/Praline/Beaver）、可解锁改良（Chateau/Mission/Polder）为伟人效果的依赖物，已在对应行注明。
 
 ---
 
-## 二、原版伟人完整数据（风云变幻规则）
+## 1. Team PVP More GreatPeople 伟人补充包（3497524344）
 
-### 2.1 招募费用（标准速度）
+实现方式：纯 SQL 巨作表（`GreatWorks` + `GreatWork_YieldChanges`），著作/乐曲基础产出 4 文化 + 旅游（文艺复兴作家 4 文化 1 部；音乐家文艺复兴 2 部各 4 文化，中世纪 1 部）。无修饰器、无 Lua。
 
-| 时代 | 古典 | 中世纪 | 文艺复兴 | 工业 | 现代 | 原子能 | 信息 |
-|---|---|---|---|---|---|---|---|
-| 基准点数 | 60 | 120 | 240 | 420 | 660 | 960 | 1200 |
+### 大作家（23 位）——每人巨作
 
-> 联机（双倍速）减半：30/60/90/180/270/420/600。Team PVP mod 的"降低成本"配置即把文艺复兴及以后压到联机速标准（180/360/540/840/1200，标准速换算）。大先知机制特殊：共享限量池（玩家人数一半+1），费用随被认领数量递增，可用信仰/金币补差价。
-
-### 2.2 原版九类伟人名册
-
-通用规则：所有伟人4移动力；大将军/大海军统帅自带"+5力+1移动力"光环（2格范围，同代及次代单位）；大作家2部作品、大艺术家3部、大音乐家2部；毛里无法招募大作家，刚果（姆本巴）无法招募大先知。
-
-#### 大作家（29位）
-
-| 伟人 | 时代 | 效果/作品 |
-|---|---|---|
-| 荷马 Homer | 古典 | 《奥德赛》《伊利亚特》 |
-| 跋娑 Bhasa | 古典 | 《Madhyama Vyayoga》《Pratima-nataka》 |
-| 屈原 Qu Yuan | 古典 | 《楚辞》《哀郢》 |
-| 奥维德 Ovid | 古典 | 《变形记》《女杰书简》 |
-| 蚁垤 Valmiki | 古典 | 《罗摩衍那》《Yoga Vasistha》〔巴比伦包〕 |
-| 乔叟 Chaucer | 中世纪 | 《坎特伯雷故事集》《Troilus and Criseyde》 |
-| 李白 Li Bai | 中世纪 | 《月下独酌》《In the Mountains on a Summer Day》 |
-| 紫式部 Murasaki Shikibu | 中世纪 | 《紫式部日记》《源氏物语》 |
-| 鲁米 Rumi | 中世纪 | 《Divani Shamsi Tabriz》《玛斯纳维》〔巴比伦包〕 |
-| 塞万提斯 Cervantes | 文艺复兴 | 《堂吉诃德》《训诫小说集》 |
-| 莎士比亚 Shakespeare | 文艺复兴 | 《罗密欧与朱丽叶》《哈姆雷特》 |
-| 马基雅维利 Machiavelli | 文艺复兴 | 《李维论》《君主论》 |
-| 卡文迪许 Cavendish | 文艺复兴 | 《The Blazing World》《Observations upon Experimental Philosophy》 |
-| 多诺瓦夫人 d'Aulnoy | 文艺复兴 | 《Fair Goldilocks》《The Dolphin》 |
-| 简·奥斯汀 Jane Austen | 工业 | 《傲慢与偏见》《理智与情感》 |
-| 爱伦·坡 Poe | 工业 | 《泄密的心》《乌鸦》 |
-| 普希金 Pushkin | 工业 | 《叶甫盖尼·奥涅金》《鲍里斯·戈都诺夫》 |
-| 歌德 Goethe | 工业 | 《浮士德》《少年维特的烦恼》 |
-| 玛丽·雪莱 Mary Shelley | 工业 | 《弗兰肯斯坦》《最后的人》 |
-| 乔伊斯 Joyce | 现代 | 《尤利西斯》《都柏林人》 |
-| 狄金森 Dickinson | 现代 | 《A Bird Came Down the Walk》《Success is Counted Sweetest》 |
-| 托尔斯泰 Tolstoy | 现代 | 《战争与和平》《安娜·卡列尼娜》 |
-| 马克·吐温 Twain | 现代 | 《哈克贝利·费恩历险记》《汤姆·索亚历险记》 |
-| 碧雅翠丝·波特 Potter | 现代 | 《彼得兔的故事》《The Tailor of Gloucester》〔巴比伦包〕 |
-| 菲茨杰拉德 Fitzgerald | 现代 | 《人间天堂》《The Beautiful and the Damned》 |
-| 泰戈尔 Tagore | 原子能 | 《家庭与世界》《园丁集》 |
-| 威尔斯 H.G. Wells | 原子能 | 《世界大战》《时间机器》 |
-| 恰佩克 Capek | 信息 | 《R.U.R》《鲵鱼之乱》 |
-| 米斯特拉尔 Mistral | 信息 | 《Lecturas para mujeres》《死亡十四行诗》〔巴比伦包〕 |
-
-#### 大艺术家（23位）
-
-| 伟人 | 时代 | 效果/作品 |
-|---|---|---|
-| 安德烈·卢布廖夫 Rublev | 文艺复兴 | 《受胎告知》《光荣救世主》《升天》（宗教×3） |
-| 米开朗基罗 Michelangelo | 文艺复兴 | 《西斯廷天顶画》《哀悼基督》《大卫》 |
-| 多纳泰罗 Donatello | 文艺复兴 | 《圣马可》《加塔梅拉塔骑马像》《朱迪斯斩荷罗孚尼》 |
-| 博斯 Bosch | 文艺复兴 | 《人间乐园》《最后的审判》《干草车三联画》 |
-| 贝赫扎德 Behzad | 文艺复兴 | 《帖木儿与埃及王之战》等3件〔巴比伦包〕 |
-| 伦勃朗 Rembrandt | 工业 | 《Andries de Graeff》《Agatha Bas》《亚伯拉罕与以撒》 |
-| 格列柯 El Greco | 工业 | 《三王来朝》《圣母升天》《托莱多风景》 |
-| 仇英 Qiu Ying | 工业 | 《汉宫春晓图》《莲溪渔隐图》《赤壁图》 |
-| 提香 Titian | 工业 | 《Assunta》《莎乐美》《查理五世骑马像》 |
-| 长谷川等伯 Tōhaku | 工业 | 《松林图》《枫树图》《花鸟图》〔巴比伦包〕 |
-| 张承业 Jang Seung-eop | 现代 | 3件风景画 |
-| 安圭索拉 Anguissola | 现代 | 3件肖像画 |
-| 考夫曼 Kauffman | 现代 | 3件肖像画 |
-| 葛饰北斋 Hokusai | 现代 | 《神奈川冲浪里》《诹访湖》《凯风快晴》 |
-| 埃德莫尼亚·刘易斯 Lewis | 原子能 | 3件雕塑 |
-| 莫奈 Monet | 原子能 | 《睡莲》《印象·日出》《干草堆》 |
-| 科洛 Collot | 原子能 | 3件雕塑 |
-| 梵高 Van Gogh | 原子能 | 《星月夜》《夜间咖啡馆露台》《夜间咖啡馆》 |
-| 阿姆丽塔·谢尔-吉尔 Sher-Gil | 信息 | 3件肖像 |
-| 奥尔洛夫斯基 Orlovsky | 信息 | 3件雕塑 |
-| 克里姆特 Klimt | 信息 | 《吻》等3件 |
-| 玛丽·卡萨特 Cassatt | 信息 | 3件肖像 |
-| 康定斯基 Kandinsky | 信息 | 3件〔巴比伦包〕 |
-
-#### 大音乐家（18位）
-
-| 伟人 | 时代 | 效果/作品 |
-|---|---|---|
-| 贝多芬 Beethoven | 工业 | 《欢乐颂》《英雄交响曲》 |
-| 巴赫 Bach | 工业 | 《G小调小赋格》《无伴奏大提琴组曲》 |
-| 八桥检校 Yatsuhashi Kengyo | 工业 | 《六段之调》《八段之调》 |
-| 维瓦尔第 Vivaldi | 工业 | 《四季·冬》《La Notte协奏曲》 |
-| 莫扎特 Mozart | 工业 | 《小夜曲》《第40交响曲》 |
-| 康特米尔 Cantemir | 工业 | 3部作品〔巴比伦包〕 |
-| 李斯特 Liszt | 现代 | 《超技练习曲No.9》《乡村客栈之舞》 |
-| 柴可夫斯基 Tchaikovsky | 现代 | 《1812序曲》《小天鹅之舞》 |
-| 戈麦斯 Gomes | 现代 | 《Fosca》《Alvorada》 |
-| 刘天华 Liu Tianhua | 现代 | 《良宵》《空山鸟语》 |
-| 肖邦 Chopin | 现代 | 《降E大调夜曲》《辉煌大圆舞曲》 |
-| 乔普林 Joplin | 现代 | 3部作品〔巴比伦包〕 |
-| 罗萨斯 Rosas | 原子能 | 《Sobre las Olas》《Vals Carmen》 |
-| 德沃夏克 Dvořák | 原子能 | 《自新大陆》《小夜曲No.22》 |
-| 利留卡拉尼 Lili'uokalani | 原子能 | 《利留卡拉尼的祈祷》《Sanoe》 |
-| 克拉拉·舒曼 Schumann | 原子能 | 《前奏曲与赋格》《Toccatina》 |
-| 列昂托维奇 Leontovych | 信息 | 《钟声颂歌》《合唱团前奏曲》 |
-| 高哈尔·简 Gauhar Jaan | 信息 | 两首拉格 |
-
-#### 大工程师（21位）
-
-| 伟人 | 时代 | 效果/作品 |
-|---|---|---|
-| 伊姆霍特普 Imhotep | 中世纪 | 奇观+175锤，远古/古典奇观翻倍（2次）〔巴比伦包〕 |
-| 毕昇 Bi Sheng | 中世纪 | 城市区域位+1；触发印刷术尤里卡 |
-| 米利都的伊西多尔 Isidore | 中世纪 | 奇观+215锤（2次） |
-| 圣乔治的詹姆斯 James of St. George | 中世纪 | 立即建成远古+中世纪城墙（3次） |
-| 布鲁内莱斯基 Brunelleschi | 文艺复兴 | 奇观+315锤（2次） |
-| 达·芬奇 Leonardo da Vinci | 文艺复兴 | 随机现代科技尤里卡；工坊+3文化 |
-| 希南 Mimar Sinan | 文艺复兴 | 城市+1住房+1宜居；R&F：完成工业区时文化炸弹 |
-| 阿达·洛芙莱斯 Ada Lovelace | 工业 | 城市区域位+1；触发计算机尤里卡 |
-| 埃菲尔 Eiffel | 工业 | 奇观+480锤（2次） |
-| 詹姆斯·瓦特 James Watt | 工业 | 立即建成工坊+工厂；工厂+2锤 |
-| 沙贾汗 Shah Jahan | 现代 | 国库一半转化为奇观锤，扣除2倍金币〔巴比伦包〕 |
-| 阿尔托 Aalto | 现代 | 城市所有地块+1魅力 |
-| 戈达德 Goddard | 现代 | 触发火箭学尤里卡；太空项目+20%锤 |
-| 特斯拉 Tesla | 现代 | 区域建筑+2锤，覆盖范围+3格 |
-| 简·德鲁 Jane Drew | 原子能 | 城市+4住房+3宜居 |
-| 罗布林 Roebling | 原子能 | 城市+2住房+1宜居（2次） |
-| 科罗廖夫 Korolev | 原子能 | 太空竞赛项目+1500锤 |
-| 帕克斯顿 Paxton | 信息 | 娱乐中心区域建筑+1宜居，范围+3格 |
-| 柯里亚 Correa | 信息 | 城市所有地块+2魅力 |
-| 冯·布劳恩 von Braun | 信息 | 太空项目+100%锤 |
-| 丹下健三 Kenzo Tange | 信息 | 城市每个区域提供邻接加成等值旅游〔巴比伦包〕 |
-
-#### 大商人（24位）
-
-| 伟人 | 时代 | 效果/作品 |
-|---|---|---|
-| 科拉乌斯 Colaeus | 古典 | +100信仰；复制该地块奢侈品至首都 |
-| 克拉苏 Crassus | 古典 | +60金；吞并相邻地块（3次） |
-| 张骞 Zhang Qian | 古典 | +1商路容量；通此城外国商路双方+2金 |
-| 伊本·法德兰 Ibn Fadlan | 中世纪 | +1商路容量；通城邦商路+2信仰〔巴比伦包〕 |
-| 雅典的伊琳娜 Irene | 中世纪 | +1商路容量+复制奢侈品；R&F：+1总督头衔 |
-| 马可·波罗 Marco Polo | 中世纪 | 免费商人单位+1商路容量；通此城外国商路双方+2金 |
-| 巴尔迪 Bardi | 中世纪 | +200金+1使者 |
-| 周达观 Zhou Daguan | 文艺复兴 | 在城邦获得3使者〔巴比伦包〕 |
-| 美第奇 Medici | 文艺复兴 | 立即建成市场+银行；银行+2万能巨作槽 |
-| 富格尔 Fugger | 文艺复兴 | +200金+2使者 |
-| 托达尔·马尔 Todar Mal | 文艺复兴 | +1使者；国内商路按目的地区域数+金 |
-| 亚当·斯密 Adam Smith | 工业 | +1经济政策槽；R&F：+500金+1总督头衔 |
-| 阿斯特 Astor | 工业 | +500金+2使者 |
-| 斯皮尔斯伯里 Spilsbury | 工业 | 创造"玩具"奢侈品（+4宜居） |
-| 莱佛士 Raffles | 现代 | 吞并城邦且该城+10忠诚〔巴比伦包〕 |
-| 洛克菲勒 Rockefeller | 现代 | +1石油/商路按战略资源+金；GS：每回合+3石油 |
-| 布里德洛夫 Breedlove | 现代 | 对有商路文明+25%旅游 |
-| 戈达德 Goddard | 现代 | 对全部文明外交能见度+1 |
-| 鲁宾斯坦 Rubinstein | 原子能 | 2份"化妆品"（各+4宜居） |
-| 李维·斯特劳斯 Strauss | 原子能 | 2份"牛仔裤"（各+4宜居） |
-| 本茨 Bentz | 原子能 | +1商路容量；对有商路文明+25%旅游 |
-| 雅诗·兰黛 Lauder | 信息 | 2份"香水"（各+6宜居） |
-| 塔塔 Tata | 信息 | 学院区域+10旅游 |
-| 岩隈久示 Ibuka | 信息 | 工业区+10旅游 |
-
-#### 大科学家（24位）
-
-| 伟人 | 时代 | 效果/作品 |
-|---|---|---|
-| 张衡 Zhang Heng | 古典 | 天文导航/数学/工程学尤里卡（已触发则完成）〔巴比伦包〕 |
-| 阿耶波多 Aryabhata | 古典 | 3个古典/中世纪随机科技尤里卡 |
-| 欧几里得 Euclid | 古典 | 数学+1个中世纪随机科技尤里卡 |
-| 希帕提娅 Hypatia | 古典 | 图书馆+1科技；立即建成图书馆 |
-| 扎哈拉维 al-Zahrawi | 中世纪 | 1个中世纪/文艺复兴尤里卡；被动1格+20治疗 |
-| 宾根的希尔德加德 Hildegard | 中世纪 | +100信仰；圣地邻接转科技 |
-| 海亚姆 Khayyam | 中世纪 | 2个科技尤里卡+1个市政鼓舞 |
-| 伊本·赫勒敦 Ibn Khaldun | 文艺复兴 | 学院+2住房+1宜居；幸福度非食物收益+40%〔巴比伦包〕 |
-| 杜夏特莱 du Chatelet | 文艺复兴 | 3个文艺复兴/工业尤里卡 |
-| 伽利略 Galileo | 文艺复兴 | 每相邻山脉+250科技 |
-| 牛顿 Newton | 文艺复兴 | 立即建成图书馆+大学；大学+2科技 |
-| 达尔文 Darwin | 工业 | 每相邻自然奇观+500科技 |
-| 门捷列夫 Mendeleev | 工业 | 化学+1个工业随机尤里卡 |
-| 詹姆斯·杨 James Young | 工业 | 2个工业/现代尤里卡；揭示石油 |
-| 图灵 Turing | 现代 | 计算机+1个现代随机尤里卡 |
-| 爱因斯坦 Einstein | 现代 | 1个现代尤里卡；研究实验室+4科技 |
-| 诺贝尔 Nobel | 现代 | 1个现代/原子能尤里卡；+100点当前及未来伟人点数 |
-| 薛定谔 Schrödinger | 原子能 | 3个原子能/信息尤里卡 |
-| 阿马尔 Ammal | 原子能 | 每相邻雨林+400科技 |
-| 利基 Leakey | 原子能 | 城市每件文物+350科技；文物300%旅游 |
-| 米德 Mead | 原子能 | +1000科技+1000文化〔巴比伦包〕 |
-| 萨根 Sagan | 信息 | 太空项目+3000锤 |
-| 克沃莱克 Kwolek | 信息 | 太空项目+100%锤 |
-| 萨拉姆 Salam | 信息 | 触发信息时代全部尤里卡 |
-
-#### 大将军（24位）
-
-| 伟人 | 时代 | 效果/作品 |
-|---|---|---|
-| 布狄卡 Boudica | 古典 | 转换相邻蛮族单位 |
-| 汉尼拔 Hannibal | 古典 | 1个陆军单位+1晋升 |
-| 孙子 Sun Tzu | 古典 | 产生巨作《孙子兵法》 |
-| 征侧 Trưng Trắc | 古典 | 永久-25%战争厌倦〔巴比伦包〕 |
-| 埃塞尔弗莱德 Æthelflæd | 中世纪 | 立即创建骑士；R&F：城市+2忠诚/回合 |
-| 熙德 El Cid | 中世纪 | 陆军单位编成军团 |
-| 成吉思汗/帖木儿 Genghis/Timur | 中世纪 | +1晋升+25%经验（R&F帖木儿替换成吉思汗） |
-| 恩津加/阿米娜 Nzinga/Amina | 文艺复兴 | +1使者（大谈判家包阿米娜替换恩津加） |
-| 古斯塔夫二世 Gustavus | 文艺复兴 | 创建带1晋升射石炮 |
-| 圣女贞德 Jeanne d'Arc | 文艺复兴 | 产生1件圣物 |
-| 丹达拉 Dandara | 工业 | 授予带1晋升武僧（2次）〔巴比伦包〕 |
-| 玻利瓦尔/圣马丁 Bolívar/San Martín | 工业 | +2使者（玛雅包圣马丁替换） |
-| 拿破仑 Napoleon | 工业 | 陆军单位编成军队 |
-| 章西女王 Lakshmibai | 工业 | 创建带1晋升骑兵 |
-| 图帕克·阿马鲁 Tupac Amaru | 现代 | 敌境每无防区域生成火枪手〔巴比伦包〕 |
-| 莫纳什 Monash | 现代 | +1晋升+75%经验 |
-| 拉斯科娃 Raskova | 现代 | 航空港空中槽位+1 |
-| 萨摩里·杜尔 Touré | 现代 | 创建带1晋升步兵（R&F：特种部队） |
-| 麦克阿瑟 MacArthur | 原子能 | 创建带1晋升坦克；GS：+1石油/回合 |
-| 艾森豪威尔 Eisenhower | 原子能 | 军事单位+5%锤 |
-| 朱可夫 Zhukov | 原子能 | 陆军夹击加成+50% |
-| 苏迪曼 Sudirman | 原子能 | +1晋升+100%经验；R&F：城市+6忠诚 |
-| 马苏德 Massoud | 信息 | 创建带1晋升现代反坦克 |
-| 维马拉拉特纳 Wimalaratne | 信息 | +1晋升+100%经验 |
-
-#### 大海军统帅（23位）
-
-| 伟人 | 时代 | 效果/作品 |
-|---|---|---|
-| 阿尔忒弥西亚 Artemisia | 古典 | 海军单位+1晋升 |
-| 杜伊利乌斯 Duilius | 古典 | 海军单位编成舰队 |
-| 地米斯托克利 Themistocles | 古典 | 创建四段战船；GS：海军远程+20%锤 |
-| 航海家汉诺 Hanno | 古典 | 海军近战+2移动力〔巴比伦包〕 |
-| 希墨里奥斯 Himerios | 中世纪 | +1晋升+25%经验〔巴比伦包〕 |
-| 莱夫·埃里克松 Erikson | 中世纪 | 海军可进海洋格；GS：+1视野 |
-| 拉金德拉·朱罗 Chola | 中世纪 | 劫掠收益+40%；GS：海军+3力 |
-| 郑和 Zheng He | 中世纪 | +1使者；GS：免费商队+商路容量+1 |
-| 德雷克 Drake | 文艺复兴 | +75金+劫掠商路+50%；GS：创建私掠船 |
-| 圣克鲁斯 Santa Cruz | 文艺复兴 | 编成无敌舰队 |
-| 李舜臣 Yi Sun-Sin | 文艺复兴 | 创建铁甲舰；GS：+1煤/回合 |
-| 麦哲伦 Magellan | 文艺复兴 | +300金+复制奢侈品〔需R&F〕 |
-| 郑一嫂 Ching Shih | 工业 | +100金+劫掠+60%；GS：+500金 |
-| 纳尔逊 Nelson | 工业 | 海军夹击+50%；GS：立即建成灯塔+造船厂 |
-| 布布利娜 Bouboulina | 工业 | +1晋升+50%经验 |
-| 马修·佩里 Perry | 现代 | 成为城邦宗主国〔巴比伦包〕 |
-| 希佩尔 Hipper | 现代 | 创建战列舰；GS：+1煤/回合 |
-| 利斯博阿 Lisboa | 现代 | -25%战争厌倦 |
-| 东乡平八郎 Togo | 现代 | +1晋升+75%经验；R&F：+6忠诚 |
-| 尼米兹 Nimitz | 原子能 | 海军袭击者+20%锤；GS：创建潜艇+1石油/回合 |
-| 霍珀 Hopper | 原子能 | 随机解锁2个免费科技（GS） |
-| 戈尔什科夫 Gorshkov | 原子能 | +1晋升+100%经验 |
-| 费尔南多 Fernando | 信息 | +1晋升+200%经验 |
-
-#### 大先知（16位，机制特殊）
-
-| 时代 | 人物 |
-|---|---|
-| 古典 | 孔子、施洗约翰、老子、释迦牟尼、西门·彼得、琐罗亚斯德 |
-| 中世纪 | 阿迪·商羯罗、菩提达摩、爱任纽、太安万侣、松赞干布 |
-| 文艺复兴 | Haji Huud、Madhva Acharya、马丁·路德、托马斯·阿奎那、阿西西的方济各 |
-
-> 所有大先知效果相同：在圣地/巨石阵创立宗教。工业时代起无法招募。**三个新增型mod都没有新增大先知**，这是一个完全空白的扩展位。
-
----
-
-## 三、Mod 伟人完整清单
-
-### 3.1 Team PVP伟人补充包（66条记录）
-
-**大将军（10位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| 卫青 | 古典 | 创建1个拥有+2  移动力的陆军近战单位。 |
-| 霍去病 | 古典 | 赠予军事陆军单位1次强化等级。 |
-| 岳飞 | 中世纪 | 创建1个拥有+2  移动力的抗骑兵单位。 |
-| 贝利撒留 | 中世纪 | 创建1个拥有+1  移动力的轻骑兵单位。 |
-| 戚继光 | 文艺复兴 | 立即创建拥有1次升级的火枪手单位，每回合提供1点  硝石。 |
-| 李自成 | 文艺复兴 | 把一个军事陆地单位变成军团。 |
-| 罗伯特・李 | 工业 | 为骑兵单位+10% Production 生产力。 |
-| 老毛奇 | 工业 | 所有陆地单位+30%支援加成。 |
-| 卡特利特·马歇尔 | 现代 | 立即创建拥有1次升级的大炮单位，每回合提供1点  石油。 |
-| 托马斯・布莱梅 | 现代 | 所有陆地单位+1 Strength 战斗力。 |
-
-**大科学家（10位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| 刘徽 | 古典 | 在指定位置创作《九章算术》（ GreatWork_Writing 著作，提供 4 Science 科技值、4 Tourism 旅游业绩） |
-| 祖冲之 | 古典 | 为机械和1个随机中世纪科技启动 TechBoosted 尤里卡时刻。 |
-| 花拉子米 | 中世纪 | 在学院上激活。该学院的 Science 科技值相邻加成也提供 Production 生产力。 |
-| 贾思勰 | 中世纪 | TechBoosted 尤里卡提供额外2%进度。 |
-| 开普勒 | 文艺复兴 | 为所有文艺复兴时期的科技启动 TechBoosted 尤里卡时刻。 |
-| 李时珍 | 文艺复兴 | 为卫生设备启动 TechBoosted 尤里卡时刻，获得1个医疗兵。 |
-| 莫尔斯 | 工业 | 获得当前回合产出的等额 Science 科技值。 |
-| 萨弗里 | 工业 | 为工业化启动 TechBoosted 尤里卡时刻，若已有 TechBoosted 尤里卡则解锁工业化科技。 |
-| 居里夫人 | 现代 | 忽视普通科技要求，显示 RESOURCE_URANIUM 铀。所有战略资源改良设施每回合额外产出1个对应资源。 |
-| 贝尔 | 现代 | 为无线电启动 TechBoosted 尤里卡时刻。若已有 TechBoosted 尤里卡则解锁无线电科技。 |
-
-**大工程师（10位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| 李冰 | 古典 | 为城市提供 PRODUCTION 5点生产力（联机速度下），如果城市正在修建水利区域（水渠、运河或堤坝）则可以立即完成。 |
-| 维特鲁威 | 古典 | 赠予1个免费的建造者单位，该城市建造奇观时+10% PRODUCTION 生产力。 |
-| 宇文恺 | 中世纪 | 立即建造一个工作坊，该城市建造区域时+15% PRODUCTION 生产力。 |
-| 苏颂 | 中世纪 | 立即建造一个水磨，该城市+5% PRODUCTION 生产力。 |
-| 约瑟夫·帕克斯顿 | 文艺复兴 | 此城和所有相邻奇观的市中心+1 Amenities 宜居度。 |
-| 蒯祥 | 文艺复兴 | 立即推进当前在建奇观25%的建造进度，文艺复兴及之前的奇观翻倍。此城所有世界奇观+2 CULTURE 文化值。 |
-| 詹天佑 | 工业 | 在非首都市中心激活时，建造一条目标城市到首都的铁路。所有工业区+1 PRODUCTION 生产力相邻加成。 |
-| 迈克尔·法拉第 | 工业 | 为所有城市提供15回合的清洁 POWER 电力供给。 |
-| 托马斯·爱迪生 | 现代 | 拥有充足 POWER 电力供给的城市 +15% 项目 PRODUCTION 生产力，为1项工业时代及之后的随机科技启动尤里卡时刻。 |
-| 茅以升 | 现代 | 为奇观提供225点 PRODUCTION 生产力（联机速度下），若为水上奇观则立即完成。所有单位无视河流的移动力减益。 |
-
-**大商人（8位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| 吕不韦 | 古典 | 立即建造一个市场，市场+1 GOLD 金币。 |
-| 子贡 | 古典 | 所有贸易路线+1 GOLD 金币。 |
-| 王玄策 | 中世纪 | 己方领土内或靠近己方领土的商人单位免遭掠夺。 |
-| 裴明礼 | 中世纪 | +1 TradeRoute 贸易路线容量，+1 ENVOY 使者。 |
-| 沈万三 | 文艺复兴 | 从现在起，每回合将获得等同于国库2%的 GOLD 金币。（上限1000） |
-| 科西莫・梅第奇 | 文艺复兴 | 在选定的奢侈品单元格上激活，赠予一份该奢侈品给您的首都。该奢侈品将重复提供宜居度。 |
-| 安德鲁・卡内基 | 工业 | +1 TradeRoute 贸易路线容量。改良后的 RESOURCE_IRON 铁资源+3 GOLD 金币。 |
-| 顾维钧 | 工业 | 在城邦领土内激活。为玩家提供该城邦的宗主国能力。 |
-
-**大作家（23位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| 司马相如 | 古典 | — |
-| 宋玉 | 古典 | — |
-| 班固 | 古典 | — |
-| 谢灵运 | 古典 | — |
-| 杜甫 | 中世纪 | — |
-| 白居易 | 中世纪 | — |
-| 苏轼 | 中世纪 | — |
-| 辛弃疾 | 中世纪 | — |
-| 吴承恩 | 文艺复兴 | — |
-| 施耐庵 | 文艺复兴 | — |
-| 曹雪芹 | 文艺复兴 | — |
-| 罗贯中 | 文艺复兴 | — |
-| 托尔斯泰 | 工业 | — |
-| 梁启超 | 工业 | — |
-| 雨果 | 工业 | — |
-| 海明威 | 现代 | — |
-| 茅盾 | 现代 | — |
-| 鲁迅 | 现代 | — |
-| 沈从文 | 原子能 | — |
-| 老舍 | 原子能 | — |
-| 刘慈欣 | 信息 | — |
-| 江南 | 信息 | — |
-| 莫言 | 信息 | — |
-
-**大音乐家（5位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| 阿里斯托芬 | 古典 | — |
-| 沃尔夫拉姆 | 中世纪 | — |
-| 纪尧姆・德・马肖 | 中世纪 | — |
-| 克劳迪奥·蒙特威尔第 | 文艺复兴 | — |
-| 杜阿尔特·罗博 | 文艺复兴 | — |
-
-
-### 3.2 Nyguita更多伟人（88条记录）
-
-**大将军（11位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Eumenes of Cardia | 古典 | — |
-| Zhuge Liang | 古典 | Trigger the TechBoosted Eureka for Military Tactics. If it is already triggered, instead… |
-| Jan Žižka | 中世纪 | +5 Strength Combat Strength for all land units when defending. |
-| Roger de Flor | 中世纪 | 10% Discount on Gold Gold and Faith Faith purchases when buying land military units in c… |
-| Tomoe Gozen | 中世纪 | Instantly creates a Courser unit with 1 promotion level. |
-| Albrecht von Wallenstein | 文艺复兴 | — |
-| Federico da Montefeltro | 文艺复兴 | +1 Science Science from each GreatWork_Writing Great Work of Writing. +1 Culture Culture… |
-| Hernán Cortés | 文艺复兴 | Instantly creates a Conquistador unit with 1 promotion level. |
-| Geronimo | 工业 | +5 Strength Combat Strength when fighting ennemies with a higher base Strength Combat St… |
-| Hijikata Toshizō | 工业 | Grants +4 Loyalty per turn for this city. |
-| Emiliano Zapata | 现代 | Yields gained from pillaging are doubled. |
-
-**大海军统帅（11位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Grace O'Malley | 文艺复兴 | Gain {Amount} Gold Gold. +75% rewards from Coastal Raids. |
-| Hasekura Tsunenaga | 文艺复兴 | TradeRoute Trade Routes to more advanced civilizations grant +1 Science Science for ever… |
-| Michiel de Ruyter | 文艺复兴 | +7 Strength Combat Strength for a naval unit. |
-| Peter Tordenskjold | 文艺复兴 | Naval units have +5 Strength Combat Strength vs. district defenses. |
-| Túpac Yupanqui | 文艺复兴 | — |
-| Vasco da Gama | 文艺复兴 | Provides 2 Copies of RESOURCE_SPICES Spices. TradeRoute Trade Routes provides +50% Gold … |
-| David Farragut | 工业 | Grants +4 Loyalty per turn for this city. |
-| Fernando Villaamil | 工业 | Instantly creates a Destroyer. Grants 1 RESOURCE_OIL Oil per turn. |
-| James Cook | 工业 | +2 Science Science, Culture Culture, and Gold Gold from each city-state you are Suzerain… |
-| Pavlos Kountouriotis | 现代 | — |
-| Jacques-Yves Cousteau | 原子能 | Gains {Amount} Culture. Reefs provides +2 Culture Culture. |
-
-**大科学家（11位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Hippocrates | 古典 | Chosen city gains 1 Housing Housing. Increases growth by 5% in all cities. |
-| Sun Simiao | 古典 | Reveals RESOURCE_NITER Niter without the normal technology requirement. |
-| Roger Bacon | 中世纪 | Trigger the TechBoosted Eureka for Scientific Theory. If the Eureka for Scientific Theor… |
-| Gerardus Mercator | 文艺复兴 | Naval and Embarked units gains +1 Movement Movement. Trigger the TechBoosted Eureka for … |
-| Paracelsus von Hohenheim | 文艺复兴 | Universities provides +2 Food Food, +2 Gold Gold and +1 Housing Housing. |
-| Ulugh Beg | 文艺复兴 | Palace and buildings in the Government Plaza and the Diplomatic Quarter provides +3 Scie… |
-| John Muir | 工业 | Breathtaking tiles receive +1 SCIENCE Science and +1 CULTURE Culture. Grants a Naturalis… |
-| Auguste Piccard | 现代 | Trigger the TechBoosted Eurekas for Flight and Advanced Flight. If the Eureka for Flight… |
-| Edith Clarke | 现代 | Powered cities provides +{Amount}% Science Science |
-| Jagadish Chandra Bose | 现代 | Trigger the TechBoosted Eurekas for Radio and Telecommunications. If the Eurekas for Rad… |
-| Rachel Carson | 原子能 | Gain {Amount} Science Science for each Coast tile here or adjacent. + Gain {Amount} Cult… |
-
-**大工程师（11位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Archimedes | 中世纪 | This city has an additional Ranged Ranged strike per turn. Instantly creates a Trebuchet. |
-| Master Gerhard | 中世纪 | Grants {Amount} Production Production towards wonder construction. Wonders provides +3 F… |
-| Sergius Orata | 中世纪 | — |
-| Bartolomeo Cristofori | 文艺复兴 | Workshops provide +1 GreatMusician Great Musician point and have a GreatWork_Music Great… |
-| Orbán | 文艺复兴 | +15% Production Production toward Siege units. Siege units gain +5 Strength Combat Stren… |
-| Henry Bessemer | 工业 | Trigger the TechBoosted Eureka for Steel. If the Eureka for Steel has already been trigg… |
-| Joseph-Marie Jacquard | 工业 | Instantly builds a Workshop and a Factory. This city have +2 Power Power. |
-| Norbert Rillieux | 工业 | Plantations provides +2 Food Food, +2 Gold Gold and +1 Production Production. |
-| Hugo Eckener | 现代 | Aircrafts have +1 Movement Movement and +1 Range Range |
-| Sakichi Toyoda | 现代 | DISTRICT_INDUSTRIAL_ZONE Industrials Zones' adjacency bonuses gain an additional Science… |
-| Nikolay Dollezhal | 原子能 | Grants 1 RESOURCE_URANIUM Uranium per turn. +25% Production towards nuclear projects. |
-
-**大商人（11位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Gaius Maecenas | 古典 | Patronage of Great People costs 10% less Gold Gold. |
-| Wang Anshi | 中世纪 | +1 Economic policy slot |
-| Antonio Van Diemen | 文艺复兴 | International TradeRoute Trade Routes on foreign continents provides +1 Food Food, +1 Pr… |
-| Jerome Horsey | 文艺复兴 | +1 Diplomatic policy slot |
-| Pierre-Esprit Radisson | 文艺复兴 | Creates one copy of RESOURCE_NYGUITA_BEAVER Beaver, which provides +2 Amenities Amenitie… |
-| Samuel de Champlain | 文艺复兴 | Instantly creates a Settler and a Musketman. |
-| Elizabeth Macarthur | 工业 | Pastures trigger a culture bomb and provides +2 Gold Gold. |
-| Ninomiya Sontoku | 工业 | Farms and Terrace Farms provides +1 Gold Gold. Cities with an established Governor recei… |
-| Thomas Cook | 工业 | +50% Tourism Tourism from DISTRICT_WONDER Wonders, Sea Side Resorts and Ski Resorts |
-| Solomon R. Guggenheim | 现代 | Gain {Amount} Gold Gold for every GreatWork_ReligiousGreatWork_SculptureGreatWork_Portra… |
-| Satoru Iwata | 信息 | Research Labs provides +3 Culture Culture, +2 Gold Gold but -1 Science Science. Commerci… |
-
-**大作家（11位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Lucian | 古典 | — |
-| Al-Hariri of Basra | 中世纪 | — |
-| Chrétien de Troyes | 中世纪 | — |
-| Christine de Pizan | 文艺复兴 | — |
-| Jules Verne | 工业 | — |
-| Victor Hugo | 工业 | — |
-| Jorge Luis Borges | 现代 | — |
-| Osamu Dazai | 现代 | — |
-| Sir Arthur Conan Doyle | 现代 | — |
-| Umberto Eco | 原子能 | — |
-| Kinoko Nasu | 信息 | — |
-
-**大艺术家（11位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Giuseppe Arcimboldo | 文艺复兴 | — |
-| Nicolas Poussin | 文艺复兴 | — |
-| Antonio Canova | 工业 | — |
-| Edgar Degas | 工业 | — |
-| Katsushika Ōi | 工业 | — |
-| Alphonse Mucha | 现代 | — |
-| Amedeo Mogigliani | 现代 | — |
-| Camille Claudel | 现代 | — |
-| Jean-Michel Basquiat | 原子能 | — |
-| Salvador Dalí | 原子能 | — |
-| Peter Doig | 信息 | — |
-
-**大音乐家（11位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Barbara Strozzi | 文艺复兴 | — |
-| Richard Wagner | 工业 | — |
-| Giacomo Puccini | 现代 | — |
-| Ulvi Cemal Erkin | 现代 | — |
-| Benjamin Britten | 原子能 | — |
-| Iannis Xenakis | 原子能 | — |
-| Louis W. Ballard | 原子能 | — |
-| Olivier Messiaen | 原子能 | — |
-| Steve Reich | 原子能 | — |
-| Georg Friedrich Haas | 信息 | — |
-| Yūgo Kanno | 信息 | — |
-
-
-### 3.3 Sumus Magnus伟人扩展（72条记录）
-
-**大将军（16位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Baibars | 中世纪 | Units have 20% less Strength Combat Strength reduction from being injured. |
-| Gajah Mada | 中世纪 | Grants one copy of RESOURCE_PEPPER Pepper to this City. If the City is conquered, also g… |
-| Hugues de Payens | 中世纪 | Unlocks and builds TEXTICON_TEMPALR_VAULT Templar Vault - a unique building that grants … |
-| Jan Žižka | 中世纪 | Land units gain +4 Strength Combat Strength when fighting units with a higher base Stren… |
-| Khalid ibn al-Walid | 中世纪 | Gain 200 Faith Faith. |
-| Rurik | 中世纪 | Instantly creates a Settler and a Berserker. |
-| Carolus Rex | 文艺复兴 | Allows the training of Caroleans (Requires Metal Casting). |
-| Catherina Sforza | 文艺复兴 | Gain 300 Culture Culture. |
-| Hernán Cortés | 文艺复兴 | Creates a Conquistador unit with one promotion. |
-| Stanisław Żółkiewski | 文艺复兴 | Allows the training of Winged Hussars (Requires Mercantilism). |
-| Giuseppe Garibaldi | 工业 | Melee units gain +3 Strength Combat Strength when fighting on your Capital Capital's hom… |
-| Lawrence of Arabia | 现代 | Liberating a City grants +20% Culture in all cities for 10 turns. |
-| Roman von Ungern-Sternberg | 现代 | Instantly creates five Keshigs. |
-| Ulysses S. Grant | 现代 | +1 Diplomatic Victory point. |
-| William Lendrum Mitchell | 现代 | Aerodromes and their buildings grants a free copy of air fighter unit when built. These … |
-| Carl Gustaf Emil Mannerheim | 原子能 | All land units gain +4 Strength Combat Strength when defending. |
-
-**大海军统帅（8位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Agrippa | 古典 | Grants 245 Production Production towards Wonder construction. |
-| Ragnar Lodbrok | 中世纪 | Yields gained from pillaging are doubled for pillaging improvements. |
-| Roger of Lauria | 中世纪 | Naval melee units gain +1 Strength Combat strength per unused Movement Movement. |
-| Afonso de Albuquerque | 文艺复兴 | Grants one copy of RESOURCE_NUTMEG Nutmeg to this City if it is built on Capital Non-Cap… |
-| Andrea Doria | 文艺复兴 | Naval melee units, upon conquest, convert cities to your majority religion. |
-| Hayreddin Barbarossa | 文艺复兴 | Allows the training of Barbary Corsairs (Requires Medieval Faires). |
-| Henry Morgan | 文艺复兴 | Grants 1 GOVERNOR Governor Title or recruits a new Governor. |
-| Michiel de Ruyter | 文艺复兴 | Chosen city gains additional Ranged Attack per turn. |
-
-**大科学家（10位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Aristotle | 古典 | Grants a free Wild Card Policy slot in any Government. |
-| Cai Lun | 古典 | Unlocks and builds TEXTICON_PAPER_MAKER Paper Maker - a unique building that yields +1 S… |
-| Averroes | 中世纪 | During GLORY_GOLDEN_AGE Golden Ages, gain +1 Science Science and +2 Faith Faith for ever… |
-| Avicenna | 中世纪 | Gain TechBoosted Eureka for random Medieval Era technology. Religious units gain +3 Stre… |
-| Shen Kuo | 中世纪 | This Campus district's Science Science adjacency bonus provides Production Production as… |
-| Christopher Clavius | 文艺复兴 | Grants Science Science equal to half of your current Faith Faith output. Allows your bui… |
-| Erasmus | 文艺复兴 | While not at War with any civilization, gain +1 FAVOR Diplomatic Favor per turn for each… |
-| Louis Pasteur | 工业 | +20% Growth in all cities. Triggers the TechBoosted Eureka for Sanitation. Instantly com… |
-| Michael Faraday | 工业 | Chosen City gains +2 Power Power per turn. Triggers TechBoosted Eureka for random Indust… |
-| Andrei Sakharov | 信息 | +1 Diplomatic Victory point. Triggers TechBoosted Eureka for random Atomic or Informatio… |
-
-**大工程师（12位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Apollodorus of Damascus | 中世纪 | Each District District in this City yields +1 Production Production and +1 Culture Cultu… |
-| Muhammad V | 中世纪 | Grants 3 slots for GreatWork_Landscape Great works of Art to Capital Palace. GreatWork_R… |
-| Phidias | 中世纪 | — |
-| Vitruvius | 中世纪 | Triggers an TechBoosted Eureka for Engineering and Military Engineering, instantly resea… |
-| Jan Adriaanszoon Leeghwater | 文艺复兴 | Chosen city becomes immune to environmental damage. Allows your builders to construct Po… |
-| Philibert de l'Orme | 文艺复兴 | Chosen Industrial Zone Production Production adjacency bonus provides equal amount of Cu… |
-| Urban | 文艺复兴 | Instantly creates two Bombards with a promotion each. Can be deployed anywhere. |
-| Vauban | 文艺复兴 | Instantly creates a Military Engineer. Forts provide +1 Production Production adjacency … |
-| Alfred Krupp | 工业 | +25% Production Production towards Siege units. |
-| Francesco Bartolomeo Rastrelli | 工业 | — |
-| Isambard Kingdom Brunel | 工业 | Chosen city recieves +1% Production Production per unique DISTRICT District type built. |
-| Alberto Santos-Dumont | 现代 | Aerodromes receive +2 Production Production and +2 Culture Culture from every adjacent D… |
-
-**大商人（12位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Croesus | 古典 | Doubles current Gold Treasury. |
-| Bon da Malamocco | 中世纪 | Activated in foreign Harbor, grants a free GreatWork_Relic Relic and increases TradeRout… |
-| Ibn Battuta | 中世纪 | Receive +1 Faith Faith for every 4 tiles a TradeRoute Trade Route travels. |
-| Afanasy Nikitin | 文艺复兴 | Grants 1 free copy of the Luxury resource on this tile to your Capital Capital city. Two… |
-| Jacob Kettler | 文艺复兴 | Chosen Harbor's adjacency bonuses gain an additional Production Production bonus. Two Ch… |
-| Miura Anjin | 文艺复兴 | Grants a free Diplomatic Policy slot in any Government. |
-| Alexander Hamilton | 工业 | One extra Economic policy slot in any Government. |
-| Cecil Rhodes | 工业 | Instantly creates a Redcoat unit. All your Cities on your non-home Capital Continent wit… |
-| Jean Neuhaus II | 工业 | Unlocks TEXTICON_CHOCOLATERIE Chocolaterie - an expensive unique building that grants Cu… |
-| Shibusawa Eiichi | 工业 | Each type of Power Power-providing Resource in this City grants +1 Amenities Amenity to … |
-| John Pierpont Morgan | 现代 | +1 FAVOR Diplomatic Favor per turn for each Bank. |
-| Peter Carl Faberge | 现代 | Creates two copies of RESOURCE_EGG Faberge Eggs, which provide +5 Amenities Amenities ea… |
-
-**大作家（10位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Augustine of Hippo | 古典 | — |
-| Hugo Grotius | 文艺复兴 | Grants +1 Diplomatic Victory point. |
-| Friedrich Nietzsche | 工业 | — |
-| Jean-Jacques Rousseau | 工业 | Grants +1 Diplomatic Victory point. |
-| Voltaire | 工业 | Grants +1 Diplomatic Victory point. |
-| H. P. Lovecraft | 现代 | — |
-| Martin Heidegger | 现代 | — |
-| Robert E. Howard | 现代 | — |
-| 罗伯特·舒曼（内部代号DESCARTES） | 原子能 | — |
-| 西塞罗 | 原子能 | — |
-
-**大艺术家（2位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| André Le Nôtre | 文艺复兴 | — |
-| Lancelot Brown | 工业 | — |
-
-**大探险家（JNR联动）（2位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Ahmad ibn Majid | 文艺复兴 | All Naval units gain +2 Movement Movement. |
-| Vitus Bering | 文艺复兴 | Tundra tiles provide +1 GOLD Gold and Snow tiles provide +3 Culture Culture adjacency bo… |
-
-
-### 3.4 Great Sovereigns大统治者（32条记录）
-
-**大统治者（新类别）（32位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Asoka | 古典 | Cities recieve +1 FAITH Faith and +1 FOOD Food for each Specialty DISTRICT District. |
-| Marcus Aurelius | 古典 | Grants CivicBoosted Boost to all Medieval Era Civics. |
-| Ptolemy | 古典 | Grants 100 Production Production towards Wonder construction. +1 Culture Culture per Env… |
-| Solomon | 古典 | Instantly builds a Temple in this city. Temples provide +2 Production Production. |
-| Al-Hakam II | 中世纪 | Cities with a worship building can construct an additional Cathedral, Mosque or Synagoge… |
-| Alfred the Great | 中世纪 | — |
-| Charlemagne | 中世纪 | One free Military Policy slot in any Government. |
-| Enrico Dandolo | 中世纪 | Grants 2 GreatWork_Relic Relics and Relic slots to Capital Palace. TradeRoute Trader Uni… |
-| Frederick II | 中世纪 | One free Economic Policy slot in any Government. |
-| Harun al-Rashid | 中世纪 | TradeRoute Trade Routes provide +1 SCIENCE Science for every 6 tiles they travel if Civi… |
-| Parameswara | 中世纪 | Chosen city gains additional Ranged Attack per turn and yields +5% Gold Gold and FAITH F… |
-| Ramkhamhaeng | 中世纪 | All your cities gain +1 Citizen Population for each different type of City-state you are… |
-| Vytautas | 中世纪 | Gives chosen city +8 Loyalty per turn and creates a Knight unit with free promotion. Two… |
-| Akbar | 文艺复兴 | One free Wild Card Policy slot in any Government. |
-| Askia | 文艺复兴 | Conquered cities with a Monument grant a copy of RESOURCE_COWRIE Cowrie - unique Luxury … |
-| Isabella I | 文艺复兴 | Grants a free JNR_GreatExplorer Great Explorer. Trader units gain +2 Sight and Naval uni… |
-| Ismail I | 文艺复兴 | Capturing a City with Cavalry unit during GLORY_DARK_AGE Dark Age converts it to your ma… |
-| Julius II | 文艺复兴 | Grants 455 Production Production towards Wonder construction. |
-| Lorenzo the Magnificent | 文艺复兴 | All Renaissance era Wonders in this city gain two slots for GreatWork_Landscape Great Wo… |
-| Louis XIV | 文艺复兴 | Grants 3 Slots for GreatWork_Landscape Great Works of Art to all Government Plaza buildi… |
-| Maria Theresa | 文艺复兴 | Every type of unique improvement provided by City-States grants +20% GreatArtist Great A… |
-| Skanderbeg | 文艺复兴 | Instantly kills all enemy units within 2 tiles. Your land combat units within 2 tiles re… |
-| Ulug Beg | 文艺复兴 | Recieve +200 Science Science every time you place a new Campus district. |
-| Mehmet Ali | 工业 | 100% Gold Gold discount on all unit upgrades. Grants one randomly-chosen free technology. |
-| Meiji | 工业 | Replacing a Farm with an Industrial zone or Neighborhood grants a burst of GOLD Gold. In… |
-| Otto von Bismark | 工业 | Become Suzerain of chosen City-state, removing all other players Envoy Envoys. +1 Favor … |
-| Prithvi Narayan Shah | 工业 | +3 Strength Combat Strength to all melee and ranged land units. Additional +3 Strength C… |
-| Ataturk | 现代 | Grants 400 PRODUCTION Production towards any Construction or Unit training. Three Charge… |
-| Haile Selassie | 现代 | Grants +2 Diplomatic Victory points. |
-| Lee Kuan Yew | 原子能 | GreatMerchant Great Merchants gain +1 Charges Charge. |
-| Zayed bin Sultan Al Nahyan | 原子能 | Your cities receive +20% GOLD Gold for each different Power Power-providing Strategic Re… |
-| Rainier III | 信息 | Grants 200 Tourism Tourism per excess copy of the Luxury resources that you currently po… |
-
-
-### 3.5 平等伟人科学家（25条记录）
-
-**大科学家（8位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Theophrastus | 古典 | This Campus district's Science Science adjacency bonus provides Food Food as well. |
-| William of Ockham | 中世纪 | — |
-| Fritz Haber | 现代 | Farm tiles gain +1 Food Food per turn. |
-| Marie Curie | 现代 | Instantly builds the Radium Institute, a unique building that provides +3 Science Scienc… |
-| Satyendra Nath Bose | 现代 | — |
-| Wilhelm Röntgen | 现代 | Gain {Amount : number #} Science Science. |
-| Stephen Hawking | 原子能 | — |
-| Tim Berners-Lee | 信息 | Gain {Amount : number #} Science Science. |
-
-**（修改原版伟人）（17位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| 伽利略 | — | — |
-| 卡尔·萨根 | — | — |
-| 图灵 | — | — |
-| 埃米莉·杜夏特莱 | — | Gain {Amount : number #} Science Science. |
-| 希帕提娅 | — | — |
-| 扎哈拉维 | — | — |
-| 斯蒂芬妮·克沃莱克 | — | Invents Kevlar, providing +10 Strength defense strength to all units. |
-| 欧几里得 | — | Gain {Amount : number #} Science Science. |
-| 海什木（欧玛尔·海亚姆） | — | Gain {Amount : number #} Science Science. + This Campus district's Science Science adjac… |
-| 爱因斯坦 | — | — |
-| 牛顿 | — | — |
-| 薛定谔 | — | — |
-| 诺贝尔 | — | — |
-| 达尔文 | — | — |
-| 门捷列夫 | — | Instantly builds the Mendeleev Institute for Metrology, a unique building that provides … |
-| 阿卜杜斯·萨拉姆 | — | Instantly builds the Abdus Salam Centre for Theoretical Physics, a unique building that … |
-| 阿耶波多 | — | Instantly builds the University of Nalanda, a unique building that provides +2 Science S… |
-
-
-### 3.6 平等伟人工程师（14条记录）
-
-**大工程师（10位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Banū Mūsā | 中世纪 | — |
-| Francesco di Giorgio | 文艺复兴 | Instantly builds Ancient, Medieval, and Renaissance Walls in this city. |
-| Johannes Gutenberg | 文艺复兴 | Instantly builds Gutenberg's Workshop, a unique wonder with +3 Faith Fatih and +3 Produc… |
-| Frederick Olmsted | 工业 | Instantly builds Central Park, a unique wonder with +2 Amenities amenities, in a city ce… |
-| Isambard Brunel | 工业 | Instantly builds the Great Western Railway in a city center, a wonder that provides +2 C… |
-| Alexander Fleming | 现代 | Instantly adds +3 Citizen Population to a single city. |
-| Hedy Lamarr | 现代 | Invents the Secret Communications System, providing +5 Strength combat strength to all M… |
-| Fazlur Rahman Khan | 原子能 | — |
-| Gurmukh Sarkaria | 原子能 | Instantly builds the Itaipu Dam in an Industrial Zone, a wonder that provides +20 Produc… |
-| Mars Exploration Rover Team | 信息 | +{Amount}% Production Production towards Space Race projects. |
-
-**（修改原版伟人）（4位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| 毕昇 | — | This Industrial Zone's Production Production adjacency bonus provides Culture Culture as… |
-| 简·德鲁 | — | +{Amount} Amenities {Amount : plural 1?Amenity; other?Amenities;} for this city. |
-| 约翰·罗布林 | — | Instantly builds the Brooklyn Bridge in a city center, a wonder that provides +4 Culture… |
-| 莱昂纳多·达·芬奇 | — | — |
-
-
-### 3.7 平等伟人商人（16条记录）
-
-**大商人（11位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| Hippalus | 古典 | Grants {Amount} RESOURCE_AOM_PEPPER Pepper, a unique Luxury resource which provides +4 A… |
-| Kanishka | 古典 | — |
-| Dick Whittington | 中世纪 | Instantly builds Whittington's College, a unique building with +3 Housing housing, in a … |
-| Ichtacka Pochteca | 中世纪 | Grants {Amount} RESOURCE_AOM_TURQUOISE Aztec Turquoise, a unique Luxury resource which p… |
-| Joseph of Spain | 中世纪 | Grants {Amount} RESOURCE_AOM_JOSEPH_OF_SPAIN_SAFFRON Saffron, a unique Luxury resource w… |
-| James Lancaster | 文艺复兴 | Instantly builds the East India Company, a unique building that gives +1 Gold gold for e… |
-| David Ogilvy | 现代 | +1 Wildcard policy slot in any government. |
-| David Sarnoff | 现代 | Instantly builds the National Broadcasting Company (NBC), a Wonder that provides +5 Gold… |
-| Lizzie Magie | 现代 | Grants {Amount} RESOURCE_AOM_BOARD_GAMES Board Games, a unique Luxury resource which pro… |
-| Raymond Rubicam | 原子能 | This Commercial Hub district's Gold Gold adjacency bonus provides Culture Culture as well. |
-| Jeff Bezos | 信息 | Grants {Amount} RESOURCE_AOM_E_BOOKS E-Books, a Luxury resource which provides +6 Amenit… |
-
-**（修改原版伟人）（5位）**
-
-| 伟人 | 时代 | 效果 |
-|---|---|---|
-| 乔瓦尼·德·美第奇 | — | Instantly builds the Medici Bank, a unique building with +2 Gold gold, and +1 GreatMerch… |
-| 拉贾·托达尔·马尔 | — | Farm tiles in this city gain +1 Gold per turn. |
-| 约翰·雅各布·阿斯特 | — | — |
-| 莎拉·布里德洛夫 | — | Grants {Amount} RESOURCE_AOM_SARAH_BREEDLOVE_HAIRCARE_PRODUCTS Hair Care Products, a uni… |
-| 雅各布·富格尔 | — | Instantly builds the Fuggerei in this district, a unique building with +3 Housing housin… |
-
-
----
-
-## 四、重叠、冲突与空白位分析
-
-### 4.1 跨 mod 重复人物（同一历史人物被多个mod使用）
-
-| 人物 | 出现的mod | 冲突说明 |
-|---|---|---|
-| 扬·杰什卡 Jan Zizka | Nyguita（大将军）+ Sumus Magnus（大将军） | 同人类重复，整合时二选一 |
-| 詹姆斯·库克 James Cook | Nyguita（海军统帅）+ Sumus Magnus（海军统帅） | 同人类重复 |
-| 达·芬奇 | AOM工程师（改为**大艺术家**）+ 原版（工程师）+ Sumus 无 | AOM直接改类别，整合时需决策 |
-| 玛丽·居里 | AOM科学家（新版，建镭研究所）+ 原版无居里（原版无此人，GS为新增？否——原版无居里） | AOM新增 |
-| 法拉第 Faraday | Team PVP（工程师，供电15回合）+ Sumus Magnus（科学家，可选） | **跨类别重复**，需决策类别 |
-| 蔡伦/沈括等中国科学家 | Sumus Magnus 新增 | 与 Nyguita 的孙思邈等中国伟人主题重叠但人物不同 |
-| 伊莎贝拉/玛丽亚·特蕾莎等君主 | Great Sovereigns | 与文明领袖不同（作为伟人而非领袖），无直接冲突 |
-| 爱因斯坦/牛顿/伽利略等 | AOM 科学家（全部重做） | 与原版同名替换 |
-
-### 4.2 AOM 三部曲删除/替换的原版伟人（移植时必须成对处理）
-
-| 原版伟人 | AOM处理 | 替代方案 |
-|---|---|---|
-| 伽利略、牛顿、达尔文、诺贝尔、图灵、爱因斯坦、薛定谔、萨根 | 删效果→产"科学巨作" | 巨作+4~+8科技/文化 |
-| 阿耶波多、门捷列夫、居里（新增）、萨拉姆 | 改为建专属建筑 | 世界唯一建筑（那兰陀大学等） |
-| 欧几里得、海什木、杜夏特莱、伦琴（新增）、伯纳斯-李（新增） | 改为一次性科技值 | 120~1850科技 |
-| 希帕提娅、扎哈拉维、奥卡姆（新增）、玻色（新增）、霍金 | 产科学巨作/被动 | — |
-| Janaki Ammal、James Young | **直接删除** | 被新版本替换 |
-| 达·芬奇（工程师） | **改为大艺术家** | 产《蒙娜丽莎》等3件艺术巨作 |
-| 阿达·洛芙莱斯、戈达德、冯·布劳恩（工程师） | **直接删除** | 改为科学家版/被替换 |
-| 克拉苏、伊琳娜、戈达德、本茨、巴尔迪（商人） | **直接删除** | 被新版本替换 |
-| 美第奇、富格尔、阿斯特、布里德洛夫、托达尔·马尔等（商人） | 效果重做 | 专属建筑/新机制 |
-
-### 4.3 时代×类别空白位（原版+全部mod后仍然稀疏的位置）
-
-| 类别 | 原版最稀疏时代 | mod补充情况 | 仍空白 |
+| 伟人 | 时代 | 巨作 | 实现方式 |
 |---|---|---|---|
-| 大作家 | 原子能2、信息2 | TPMG+23位（全覆盖到信息） | 未来时代 |
-| 大艺术家 | 信息4 | Nyguita+11（含未来？否，到信息） | 未来时代 |
-| 大音乐家 | 信息2 | Nyguita+11（含2位未来时代！） | — |
-| 大工程师 | 中世纪4 | 各mod补充充分 | — |
-| 大商人 | 古典3 | TPMG/Nyguita/Sumus均补古典 | — |
-| 大科学家 | 信息3 | 各mod补充充分 | — |
-| 大将军 | 信息2 | TPMG补到现代，Nyguita补到现代 | 原子能/信息仅原版 |
-| 大海军统帅 | 信息1 | Nyguita+11（到原子能） | 信息时代稀缺 |
-| 大先知 | — | **无人补充** | **完全空白** |
-| 大统治者 | — | Sovereigns新增32位 | 新类别 |
+| 宋玉 | 古典 | 《九辩》《高唐赋》 | 纯SQL巨作 |
+| 司马相如 | 古典 | 《子虚赋》《上林赋》 | 纯SQL巨作 |
+| 班固 | 古典 | 《汉书》《两都赋》 | 纯SQL巨作 |
+| 谢灵运 | 古典 | 《山居赋》《登池上楼》 | 纯SQL巨作 |
+| 杜甫 | 中世纪 | 《三吏三别》《秋兴八首》 | 纯SQL巨作 |
+| 白居易 | 中世纪 | 《长恨歌》《琵琶行》 | 纯SQL巨作 |
+| 辛弃疾 | 中世纪 | 《青玉案·元夕》《永遇乐·京口北固亭怀古》 | 纯SQL巨作 |
+| 苏轼 | 中世纪 | 《赤壁赋》《赤壁怀古》 | 纯SQL巨作 |
+| 罗贯中 | 文艺复兴 | 《三国演义》（仅1部） | 纯SQL巨作 |
+| 施耐庵 | 文艺复兴 | 《水浒传》（仅1部） | 纯SQL巨作 |
+| 吴承恩 | 文艺复兴 | 《西游记》（仅1部） | 纯SQL巨作 |
+| 曹雪芹 | 文艺复兴 | 《红楼梦》（仅1部） | 纯SQL巨作 |
+| 梁启超 | 工业 | 《少年中国说》《饮冰室合集》 | 纯SQL巨作 |
+| 雨果 | 工业 | 《悲惨世界》《巴黎圣母院》 | 纯SQL巨作 |
+| 托尔斯泰 | 工业 | 《战争与和平》《安娜·卡列尼娜》 | 纯SQL巨作 |
+| 海明威 | 现代 | 《老人与海》《太阳照常升起》 | 纯SQL巨作 |
+| 鲁迅 | 现代 | 《呐喊》《彷徨》 | 纯SQL巨作 |
+| 茅盾 | 现代 | 《蚀》《子夜》 | 纯SQL巨作 |
+| 老舍 | 原子能 | 《骆驼祥子》《四世同堂》 | 纯SQL巨作 |
+| 沈从文 | 原子能 | 《边城》《长河》 | 纯SQL巨作 |
+| 刘慈欣 | 信息 | 《三体》《流浪地球》 | 纯SQL巨作 |
+| 莫言 | 信息 | 《红高粱》《生死疲劳》 | 纯SQL巨作 |
+| 江南 | 信息 | 《龙族》《九州缥缈录》 | 纯SQL巨作 |
 
----
+### 大音乐家（5 位，实际人名与文档不同）——每人巨作
 
-## 五、移植蓝图：单个伟人移植的最小文件要素
-
-以"从某个mod抽1位伟人放进自己的新mod"为单位，每个伟人需要搬运的部件：
-
-| 部件 | Team PVP 型（SQL） | Nyguita/Sumus 型（XML） | AOM 替换型 |
+| 伟人 | 时代 | 巨作 | 实现方式 |
 |---|---|---|---|
-| 伟人定义 | `INSERT INTO GreatPersonIndividuals` | `<GreatPersonIndividuals><Row>` | 同名 Delete+Insert |
-| 效果修饰器 | `Modifiers`+`ModifierArguments`+`GreatPersonIndividualActionModifiers` | 同名XML表 | 同左 |
-| 出生修饰器（将军/统帅光环） | `GreatPersonIndividualBirthModifiers` | 同左 | 同左 |
-| 巨作定义（作家/艺术家/音乐家） | `GreatWorks` 表 + 著作文本 | `GreatWorks.xml` | 科学/工程巨作+伪产出类型 |
-| 本地化文本 | `LocalizedText`（中英文） | `<LocalizedText>`（仅英文，需自译） | 英/法文，需自译 |
-| 图标 | `TPMG_ICONS.sql` 段 | `Great_People_Icons.xml` + DDS | Icons.xml + artdef + BLP |
-| 特殊机制 | Lua（如詹天佑铁路寻路、UI请求） | 无/少量 | UI替换Lua（**勿移植**） |
-| 依赖建筑/资源 | 部分（医疗兵等） | 部分（Sumus专属建筑/资源） | 必须连带（专属建筑/奢侈品） |
-
-**移植难度评级：**
-
-- ★ 简单：纯巨作产出型（作家/艺术家/音乐家，如 Nyguita 全部、TPMG 作家音乐家）——只涉及3张表+文本
-- ★★ 中等：一次性效果型（大多数科学家/商人/工程师）——需移植 Modifiers 链
-- ★★★ 复杂：带光环/被动/Lua 逻辑（TPMG 将军、詹天佑、AOM 建筑型、Sovereigns 全体）——需连带基础设施
+| 俞伯牙 | 古典 | 《高山》《流水》 | 纯SQL巨作 |
+| 李隆基 | 中世纪 | 《霓裳羽衣曲》（仅1部） | 纯SQL巨作 |
+| 关汉卿 | 中世纪 | 《窦娥冤》（仅1部） | 纯SQL巨作 |
+| 汤应曾 | 文艺复兴 | 《十面埋伏》《洞庭秋思》 | 纯SQL巨作（各4文化4旅游） |
+| 托马斯·路易斯 | 文艺复兴 | 《王国多么荣耀》《悼亡仪式》 | 纯SQL巨作（各4文化4旅游） |
 
 ---
 
-## 六、下一步
+## 2. Nyguita More Great People 更多伟人（2559462758）
 
-本文档是移植底稿。接下来用 grilling 拷问收敛以下决策：目标规则集（GS是否必需）、新mod定位（替换型还是新增型）、各类伟人数量预算、重复人物取舍、每个伟人的去留与效果定稿。
+实现方式：全部为 XML 数据库修饰器（GreatPersonIndividualActionModifiers + Modifiers + ModifierArguments + 单位能力），无 Lua。大将军/大海军统帅另带原版同代光环（+5力+1移动力，2格）。
+
+### 大将军（11 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Eumenes of Cardia | 古典 | +1 总督头衔 | 原版修饰器 GREATPERSON_GOVERNOR_POINTS |
+| Zhuge Liang（诸葛亮） | 古典 | 触发"军事战术"尤里卡；若已触发则直接完成该科技。另赠予1个陆军军事单位永久能力：战斗经验+25% | XML修饰器（科技推进+单位能力） |
+| Jan Žižka | 中世纪 | 所有陆地单位防御时 +5 战斗力（永久能力，覆盖全部陆军类别） | XML修饰器+单位能力 |
+| Roger de Flor | 中世纪 | 在拥有总督的城市购买陆地军事单位时，金币与信仰价格 -10%（永久） | XML修饰器（购价折扣） |
+| Tomoe Gozen | 中世纪 | 立即创建1个带1级晋升的 Courser（追击者）单位 | XML修饰器（赠单位带经验） |
+| Albrecht von Wallenstein | 文艺复兴 | +1 总督头衔 | 原版修饰器 GREATPERSON_GOVERNOR_POINTS |
+| Federico da Montefeltro | 文艺复兴 | 每部著作巨作 +1 科技；每件艺术巨作（宗教/雕塑/肖像/风景）+1 文化（永久，全城市） | XML修饰器（巨作产出加成×5条） |
+| Hernán Cortés | 文艺复兴 | 立即创建1个带1级晋升的西班牙征服者单位 | XML修饰器（赠单位带经验） |
+| Geronimo | 工业 | 与基础战斗力高于自己的敌人作战时 +5 战斗力（永久能力，全部陆军类别） | XML修饰器+单位能力（依赖拜占庭/高卢包需求条件） |
+| Hijikata Toshizō | 工业 | 该城市每回合 +4 忠诚度 | XML修饰器（单城忠诚/回合） |
+| Emiliano Zapata | 现代 | 劫掠改良设施与劫掠区域获得的收益翻倍（永久） | XML修饰器（劫掠收益×2） |
+
+### 大海军统帅（11 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Grace O'Malley | 文艺复兴 | 获得 100 金币；海岸劫掠收益 +75%（永久能力，含对改良设施） | XML修饰器（一次性金币+劫掠能力） |
+| Hasekura Tsunenaga | 文艺复兴 | 通往更先进文明的商路：对方每领先5项科技 +1 科技，每领先5项市政 +1 文化（永久） | XML修饰器（商路产出） |
+| Michiel de Ruyter | 文艺复兴 | 1个海军单位 +7 战斗力（永久能力） | XML修饰器+单位能力 |
+| Peter Tordenskjold | 文艺复兴 | 海军单位攻击区域防御时 +5 战斗力（永久能力） | XML修饰器+单位能力 |
+| Túpac Yupanqui | 文艺复兴 | +1 总督头衔 | 原版修饰器 GREATPERSON_GOVERNOR_POINTS |
+| Vasco da Gama | 文艺复兴 | 提供 2 份香料资源；商路起点与目的地双方金币 +50%（永久） | XML修饰器（资源+商路金币×2条） |
+| David Farragut | 工业 | 该城市每回合 +4 忠诚度 | XML修饰器（单城忠诚/回合） |
+| Fernando Villaamil | 工业 | 立即创建1艘驱逐舰；每回合 +1 石油 | XML修饰器（赠单位+资源/回合） |
+| James Cook | 工业 | 每个你为其宗主国的城邦：+2 科技、+2 文化、+2 金币（永久） | XML修饰器（城邦产出×3条） |
+| Pavlos Kountouriotis | 现代 | +1 总督头衔 | 原版修饰器 GREATPERSON_GOVERNOR_POINTS |
+| Jacques-Yves Cousteau | 原子能 | 获得 1000 文化；珊瑚礁地块 +2 文化（永久） | XML修饰器（一次性文化+地块产出） |
+
+### 大科学家（11 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Hippocrates | 古典 | 指定城市 +1 住房；所有城市增长 +5%（永久） | XML修饰器（住房+全局增长） |
+| Sun Simiao（孙思邈） | 古典 | 无需科技要求直接揭示硝石资源；另触发1个随机中世纪科技尤里卡 | XML修饰器（资源揭示+原版随机尤里卡） |
+| Roger Bacon | 中世纪 | 触发"科学理论"尤里卡，若已触发则直接完成该科技；从所有来源获得的大科学家点数 +20%（永久） | XML修饰器（科技推进+伟人点加成） |
+| Gerardus Mercator | 文艺复兴 | 海军单位与乘船单位 +1 移动力（永久）；触发"制图学"尤里卡，若已触发则直接完成该科技 | XML修饰器（移动力+科技推进） |
+| Paracelsus von Hohenheim | 文艺复兴 | 大学 +2 食物、+2 金币、+1 住房（永久） | XML修饰器（建筑产出×3条） |
+| Ulugh Beg | 文艺复兴 | 宫殿及政府广场、外交区的所有建筑（含女王图书馆、领事馆、官邸）各 +3 科技（永久，共13条建筑加成） | XML修饰器（建筑产出×13条） |
+| John Muir | 工业 | 魅力为"惊艳"的地块 +1 科技、+1 文化（永久）；赠予1个自然学家单位 | XML修饰器（地块产出+赠单位） |
+| Auguste Piccard | 现代 | 触发"飞行"与"高级飞行"尤里卡；若"飞行"已触发则直接完成该科技（高级飞行不直接完成）；隐形单位与攻城射程支援单位 +1 视野（永久能力） | XML修饰器（双科技推进+单位能力） |
+| Edith Clarke | 现代 | 电力充足的城市 +5% 科技（永久） | XML修饰器（通电城市科技%） |
+| Jagadish Chandra Bose | 现代 | 触发"无线电"与"电信"尤里卡，若已触发则直接完成对应科技；另触发1个随机现代科技尤里卡 | XML修饰器（双科技推进+原版随机尤里卡） |
+| Rachel Carson | 原子能 | 所在格及相邻格每块海岸：+250 科技、+200 文化（一次性） | XML修饰器（按海岸格给科技/文化） |
+
+### 大工程师（11 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Archimedes | 中世纪 | 该城市每回合额外 +1 次远程攻击；立即创建1台投石机 | XML修饰器（城防攻击次数+赠单位） |
+| Master Gerhard | 中世纪 | 给予 350 点奇观建造生产力；奇观 +3 信仰（永久） | XML修饰器（奇观锤+奇观产出） |
+| Sergius Orata | 中世纪 | 该城市 +2 住房、+1 宜居度 | 原版修饰器（HOUSING_SMALL+AMENITIES_SMALL） |
+| Bartolomeo Cristofori | 文艺复兴 | 工坊 +1 大音乐家点数，并获得1个音乐巨作槽（永久） | XML修饰器（伟人点+建筑槽位） |
+| Orbán | 文艺复兴 | 攻城单位 +15% 生产力（永久）；攻城单位对可防御区域 +5 战斗力（永久能力） | XML修饰器+单位能力 |
+| Henry Bessemer | 工业 | 触发"钢铁"尤里卡，若已触发则直接完成该科技；建筑 +10% 生产力（永久，不含奇观） | XML修饰器（科技推进+建筑锤%） |
+| Joseph-Marie Jacquard | 工业 | 立即建成1座工坊和1座工厂；该城市 +2 电力 | 原版修饰器（工坊/工厂）+XML（免费电力） |
+| Norbert Rillieux | 工业 | 种植园 +2 食物、+2 金币、+1 生产力（永久） | XML修饰器（改良产出） |
+| Hugo Eckener | 现代 | 飞机 +1 移动力、+1 航程（永久能力） | XML修饰器+单位能力×2 |
+| Sakichi Toyoda | 现代 | 工业区的生产力邻接加成同时提供等量科技（永久） | XML修饰器（邻接映射） |
+| Nikolay Dollezhal | 原子能 | 每回合 +1 铀；核项目（曼哈顿计划/常春藤行动/建造核装置/建造热核装置）+25% 生产力（永久） | XML修饰器（资源/回合+项目锤%×4条） |
+
+### 大商人（11 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Gaius Maecenas | 古典 | 用金币赞助伟人时费用 -10%（永久） | XML修饰器（赞助折扣） |
+| Wang Anshi（王安石） | 中世纪 | +1 经济政策槽（任意政体） | XML修饰器（政策槽） |
+| Antonio Van Diemen | 文艺复兴 | 通往外国大陆的国际商路 +1 食物、+1 生产力、+2 金币（永久） | XML修饰器（跨洲商路产出×3条） |
+| Jerome Horsey | 文艺复兴 | +1 外交政策槽（任意政体） | XML修饰器（政策槽） |
+| Pierre-Esprit Radisson | 文艺复兴 | 创造 1 份"海狸"专属奢侈品（+2 宜居度）；营地 +1 金币、+1 生产力（永久） | XML修饰器（专属资源+改良产出；依赖mod自带海狸资源） |
+| Samuel de Champlain | 文艺复兴 | 立即创建1个开拓者和1个火枪手 | XML修饰器（赠双单位） |
+| Elizabeth Macarthur | 工业 | 牧场触发文化炸弹；牧场 +2 金币（永久） | XML修饰器（文化炸弹+改良产出） |
+| Ninomiya Sontoku | 工业 | 农场与梯田 +1 金币（永久）；拥有已就职总督的城市：该总督每有1级晋升 +2% 金币（永久） | XML修饰器（改良产出+总督条件加成） |
+| Thomas Cook | 工业 | 世界奇观、海滨度假村、滑雪场的旅游业绩 +50%（永久） | XML修饰器（旅游%×3条，ScalingFactor=150） |
+| Solomon R. Guggenheim | 现代 | 一次性：此城每件艺术巨作（宗教/雕塑/肖像/风景）给予 350 金币；此后每件艺术巨作 +2 金币（永久） | XML修饰器（按巨作给金×4+巨作产出×4条） |
+| Satoru Iwata | 信息 | 研究实验室 +3 文化、+2 金币、-1 科技；商业中心 +1 宜居度（永久） | XML修饰器（建筑产出×3+区域宜居） |
+
+### 大作家（11 位）——每人 2 部著作
+
+| 伟人 | 时代 | 巨作 | 实现方式 |
+|---|---|---|---|
+| Lucian | 古典 | 《Lover of Lies》《A True Story》 | 纯巨作 |
+| Al-Hariri of Basra | 中世纪 | 《Serugium》《Response to a stranger's request》 | 纯巨作 |
+| Chrétien de Troyes | 中世纪 | 《Lancelot, the Knight of the Cart》《Perceval, the Story of the Grail》 | 纯巨作 |
+| Christine de Pizan | 文艺复兴 | 《To sing a happy song with a sad heart》《The Book of the City of Ladies》 | 纯巨作 |
+| Jules Verne | 工业 | 《Journey to the Center of the Earth》《Around the World in Eighty Days》 | 纯巨作 |
+| Victor Hugo | 工业 | 《The Hunchback of Notre-Dame》《Les Misérables》 | 纯巨作 |
+| Jorge Luis Borges | 现代 | 《The Garden of Forking Paths》《Death and the Compass》 | 纯巨作 |
+| Osamu Dazai | 现代 | 《The Setting Sun》《No Longer Human》 | 纯巨作 |
+| Sir Arthur Conan Doyle | 现代 | 《The Sign of Four》《The Hound of the Baskervilles》 | 纯巨作 |
+| Umberto Eco | 原子能 | 《The Name of the Rose》《Foucault's Pendulum》 | 纯巨作 |
+| Kinoko Nasu | 信息 | 《Tsukihime》《Fate/Stay Night》 | 纯巨作 |
+
+### 大艺术家（11 位）——每人 3 件艺术品
+
+| 伟人 | 时代 | 巨作 | 实现方式 |
+|---|---|---|---|
+| Giuseppe Arcimboldo | 文艺复兴 | 《The Jurist》《Summer》《Vertumnus》 | 纯巨作 |
+| Nicolas Poussin | 文艺复兴 | 《The Martyrdom of Saint Erasmus》《The Shepherds of Arcadia (Et in Arcadia Ego)》《The Judgement of Solomon》 | 纯巨作 |
+| Antonio Canova | 工业 | 《Psyche Revived by Cupid's Kiss》《Venus Victrix》《The Three Graces》 | 纯巨作 |
+| Edgar Degas | 工业 | 《The Orchestra at the Opera》《The Star》《Little Dancer Aged Fourteen》 | 纯巨作 |
+| Katsushika Ōi | 工业 | 《Beauty Fulling Cloth in the Moonlight》《Nightscene in the Yoshiwara》《Mount Fuji through a Bamboo Forest》 | 纯巨作 |
+| Alphonse Mucha | 现代 | 《Zodiac》《Nature》《After the Battle of Grunwald》 | 纯巨作 |
+| Amedeo Mogigliani | 现代 | 《The Cellist》《Head》《Jeanne Hébuterne aux épaules nues》 | 纯巨作 |
+| Camille Claudel | 现代 | 《Sakuntala》《The Waltz》《The Mature Age》 | 纯巨作 |
+| Jean-Michel Basquiat | 原子能 | 《Slave Auction》《Untitled》《Sabado por la Noche》 | 纯巨作 |
+| Salvador Dalí | 原子能 | 《The Persistence of Memory》《Galatea of the Spheres》《Crucifixion (Corpus Hypercubus)》 | 纯巨作 |
+| Peter Doig | 信息 | 《Camp Forestia》《Echo Lake》《100 Years Ago》 | 纯巨作 |
+
+### 大音乐家（11 位）——每人 2 部乐曲
+
+| 伟人 | 时代 | 巨作 | 实现方式 |
+|---|---|---|---|
+| Barbara Strozzi | 文艺复兴 | 《Il primo libro di madrigali: Amor Amor》《Diporti di Euterpe ovvero Cantate e ariette a voce sola》 | 纯巨作 |
+| Richard Wagner | 工业 | 《Tannhäuser Ouverture》《Ride Of The Valkyries》 | 纯巨作 |
+| Giacomo Puccini | 现代 | 《Madame Butterfly: Un bel di vedremo》《Turandot: Nessun Dorma》 | 纯巨作 |
+| Ulvi Cemal Erkin | 现代 | 《Duyuşlar (Impressions for piano) No.1 Oyun / Game》《Köçekçe, Dance Rhapsody for orchestra》 | 纯巨作 |
+| Benjamin Britten | 原子能 | 《The Young Person's Guide to the Orchestra》《War Requiem - Dies Irae》 | 纯巨作 |
+| Iannis Xenakis | 原子能 | 《Metastasis》《Pléïades: Peaux》 | 纯巨作 |
+| Louis W. Ballard | 原子能 | 《Katcina Dances Mvt.4: Bees》《Incident at Wonded Knee》 | 纯巨作 |
+| Olivier Messiaen | 原子能 | 《Quartet for the End of Time: Mvt.1 Liturgie de Cristal》《Four Rhythmic Etudes: Mvt. 4 Île de feu》 | 纯巨作 |
+| Steve Reich | 原子能 | 《Clapping Music》《Music for 18 Musicians: Pulses》 | 纯巨作 |
+| Georg Friedrich Haas | 信息 | 《String Quartet No. 2》《Limited Approximations: Mvt. 3》 | 纯巨作 |
+| Yūgo Kanno | 信息 | 《Trombone Concerto Flower : Mvt 3, Flower Note》《Symphony No.2 "Alles ist Architektur"》 | 纯巨作 |
+
+---
+
+## 3. Sumus Magnus Great People Expansion 伟人扩展（2448605286）
+
+实现方式：XML 数据库修饰器 + 单位能力（被动光环），无 Lua。部分伟人依赖 mod 自带专属建筑（圣殿骑士金库/造纸坊/巧克力工坊）、专属资源（胡椒/肉豆蔻/彩蛋/果仁糖）、或解锁建造者改良（城堡/传教团/圩田）。注意：mod 内部代号与实际人名大量错位（下文按**实际显示名**记录）。
+
+### 大将军（16 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Baibars | 中世纪 | 单位受伤造成的战斗力削减降低 20%（永久）；被动：中世纪与文艺复兴时代陆军单位在2格范围内每回合结束时回复生命（即使移动或攻击后） | XML修饰器+被动光环能力 |
+| Gajah Mada | 中世纪 | 给予此城 1 份"胡椒"资源；若此城被征服，额外给予"肉豆蔻"，两者各提供 +4 宜居度。被动：中世纪与文艺复兴陆军单位乘船时 +10 战斗力，且上船/下船不消耗移动力 | XML修饰器（专属资源×2）+双被动能力 |
+| Hugues de Payens | 中世纪 | 解锁并立即建成"圣殿骑士金库"（Templar Vault）——专属建筑，提供等同于该城信仰产出 10% 的金币；被动：中世纪与文艺复兴陆军单位击杀敌人时产生信仰 | XML修饰器+专属建筑（依赖mod建筑）+被动能力 |
+| Jan Žižka | 中世纪 | 陆地单位与基础战斗力更高的单位作战时 +4 战斗力（永久能力）；被动：中世纪与文艺复兴非远程陆军单位防御远程攻击时 +10 战斗力 | XML修饰器+双被动能力 |
+| Khalid ibn al-Walid | 中世纪 | 获得 200 信仰；被动：2格范围内的中世纪与文艺复兴陆军单位对宗教敌人 +7 战斗力 | XML修饰器（一次性信仰）+被动光环能力 |
+| Rurik | 中世纪 | 立即创建1个开拓者和1个狂战士；被动：中世纪与文艺复兴陆军单位经验获取 +80% | XML修饰器（赠双单位）+被动能力 |
+| Carolus Rex | 文艺复兴 | 允许训练 Carolean（卡洛琳步兵）（需"金属铸造"科技）；被动：文艺复兴与工业时代陆军单位每点未使用移动力 +3 战斗力 | XML修饰器（解锁UU）+被动能力 |
+| Catherina Sforza | 文艺复兴 | 获得 300 文化 | XML修饰器（一次性文化） |
+| Hernán Cortés | 文艺复兴 | 创建1个带1级晋升的西班牙征服者；被动：中世纪与文艺复兴近战陆军单位有几率转化被击败的敌单位 | XML修饰器（赠单位带经验）+被动能力 |
+| Stanisław Żółkiewski | 文艺复兴 | 允许训练翼骑兵（需"重商主义"市政）；被动：中世纪与文艺复兴骑兵单位攻击时 +7 战斗力 | XML修饰器（解锁UU）+被动能力 |
+| Giuseppe Garibaldi | 工业 | 近战单位在你首都所在大陆作战时 +3 战斗力（永久能力） | XML修饰器+单位能力 |
+| Lawrence of Arabia | 现代 | 解放城市后：所有城市 +20% 文化，持续10回合 | XML修饰器（解放触发的限时产出） |
+| Roman von Ungern-Sternberg | 现代 | 立即创建 5 个怯薛（Keshig）单位 | XML修饰器（赠单位×5） |
+| Ulysses S. Grant | 现代 | +1 外交胜利点 | XML修饰器（外交胜利点） |
+| William Lendrum Mitchell | 现代 | 航空港及其建筑建成时赠予1个免费的战斗机类单位复制；这些免费单位对区域防御无远程战力惩罚 | XML修饰器（区域建筑赠空军单位） |
+| Carl Gustaf Emil Mannerheim | 原子能 | 所有陆地单位防御时 +4 战斗力（永久能力） | XML修饰器+单位能力 |
+
+### 大海军统帅（8 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Agrippa | 古典 | 给予 245 点奇观建造生产力 | XML修饰器（奇观锤） |
+| Ragnar Lodbrok | 中世纪 | 劫掠改良设施获得的收益翻倍（永久）；被动：中世纪与文艺复兴海军近战单位可俘获被击败的敌海军单位 | XML修饰器+被动能力 |
+| Roger of Lauria | 中世纪 | 海军近战单位每点未使用移动力 +1 战斗力（永久能力） | XML修饰器+单位能力 |
+| Afonso de Albuquerque | 文艺复兴 | 若此城建在非首都所在大陆，给予此城 1 份"肉豆蔻"资源；黄金时代改为给予 2 份（各 +4 宜居度） | XML修饰器（条件性专属资源） |
+| Andrea Doria | 文艺复兴 | 海军近战单位征服城市时将其转化为你的主流宗教（永久能力） | XML修饰器+单位能力 |
+| Hayreddin Barbarossa | 文艺复兴 | 允许训练巴巴里海盗船（需"中世纪集市"市政）；被动：文艺复兴与工业时代海军近战单位可俘获被击败的敌海军单位 | XML修饰器（解锁UU）+被动能力 |
+| Henry Morgan | 文艺复兴 | 获得 1 个总督头衔（或招募1名新总督）；被动：文艺复兴与工业时代海军近战单位可俘获被击败的敌海军单位 | 原版修饰器（总督头衔）+被动能力 |
+| Michiel de Ruyter | 文艺复兴 | 指定城市每回合额外 +1 次远程攻击 | XML修饰器（城防攻击次数） |
+
+### 大科学家（10 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Aristotle | 古典 | 任意政体 +1 万能政策槽 | XML修饰器（政策槽） |
+| Cai Lun（蔡伦） | 古典 | 解锁并立即建成"造纸坊"（Paper Maker）——专属建筑，+1 科技、+2 金币 | XML修饰器+专属建筑（依赖mod建筑） |
+| Averroes | 中世纪 | 黄金时代期间：每部著作巨作 +1 科技、+2 信仰（永久，条件触发） | XML修饰器（巨作产出×2条，黄金时代条件） |
+| Avicenna | 中世纪 | 触发1个随机中世纪科技尤里卡；宗教单位神学战斗 +3 战斗力（永久能力） | 原版随机尤里卡+单位能力 |
+| Shen Kuo（沈括） | 中世纪 | 该学院区域的科技邻接加成同时提供等量生产力（永久） | XML修饰器（邻接映射） |
+| Christopher Clavius | 文艺复兴 | 获得等同于当前信仰产出 50% 的一次性科技值；允许你的建造者建造"传教团"改良（需"教育"科技） | XML修饰器（信仰转科技0.5系数）+解锁改良 |
+| Erasmus | 文艺复兴 | 不与任何文明交战时：每座大学 +1 外交支持/回合（永久）；触发1个随机中世纪或文艺复兴市政鼓舞 | XML修饰器（建筑外交支持）+原版随机鼓舞 |
+| Louis Pasteur | 工业 | 所有城市 +20% 增长（永久）；触发"卫生设备"尤里卡，若已触发则直接完成该科技 | XML修饰器（全局增长+科技推进） |
+| Michael Faraday | 工业 | 指定城市每回合 +2 电力；触发1个随机工业时代科技尤里卡；2 次使用次数 | XML修饰器（免费电力+原版随机尤里卡），ActionCharges=2 |
+| Andrei Sakharov | 信息 | +1 外交胜利点；触发1个随机原子能或信息时代科技尤里卡 | XML修饰器（外交胜利点+随机尤里卡） |
+
+### 大工程师（12 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Apollodorus of Damascus | 中世纪（另有古典版） | 该城每个区域 +1 生产力、+1 文化（永久） | XML修饰器（区域产出×2条） |
+| Muhammad V | 中世纪 | 为首都宫殿增加 3 个艺术巨作槽；放置在宫殿的宗教艺术巨作 +4 信仰（永久） | XML修饰器（宫殿槽位+巨作产出） |
+| Phidias | 中世纪（另有古典版） | 此城所有古典时代奇观各增加 1 个万能巨作槽（可放圣物/文物/雕塑类；覆盖12座指定古典奇观） | XML修饰器（奇观槽位×12条） |
+| Vitruvius | 中世纪（另有古典版） | 触发"工程学"与"军事工程学"尤里卡，已触发则直接完成对应科技；被动：古典与中世纪攻城单位 +5 战斗力 | XML修饰器（双科技推进）+被动能力 |
+| Jan Adriaanszoon Leeghwater | 文艺复兴 | 指定城市免疫环境损害（洪水/风暴等）；允许你的建造者建造"圩田"改良（需"公会"市政） | XML修饰器（免环境损害）+解锁改良 |
+| Philibert de l'Orme | 文艺复兴 | 指定工业区的生产力邻接加成提供等量文化；允许你的建造者建造"城堡"改良（需"人文主义"市政） | XML修饰器（邻接映射）+解锁改良 |
+| Urban | 文艺复兴 | 立即创建2台各带1级晋升的射石炮（可部署于任意位置） | XML修饰器（赠双单位带经验） |
+| Vauban | 文艺复兴 | 立即创建1个军事工程师；堡垒为工业区提供 +1 生产力邻接加成（永久） | XML修饰器（赠单位+改良邻接产出） |
+| Alfred Krupp | 工业 | 攻城单位 +25% 生产力（永久） | XML修饰器（单位锤%） |
+| Francesco Bartolomeo Rastrelli | 工业 | 〔仅 Urban Complexity 联动版，类别为大艺术家〕此城的 Cabinet、Mansion 及政府广场建筑各 +4 文化（永久） | XML修饰器（建筑产出×12条，依赖UC联动） |
+| Isambard Kingdom Brunel | 工业 | 指定城市：每有一种已建成的区域类型 +1% 生产力（永久，按16种区域逐一判定） | XML修饰器（按区域类型%×16条） |
+| Alberto Santos-Dumont | 现代 | 航空港从每个相邻区域获得 +2 生产力、+2 文化（永久） | XML修饰器（区域邻接产出×2条） |
+
+### 大商人（12 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Croesus | 古典 | 当前国库金币翻倍 | XML修饰器（国库×2，参数100%） |
+| Bon da Malamocco | 中世纪 | 在外国港口激活：赠予1件免费圣物，且商路容量 +1 | XML修饰器（圣物+原版商路容量） |
+| Ibn Battuta | 中世纪 | 每条商路每经过4格 +1 信仰（永久，系数0.25/格） | XML修饰器（商路里程信仰） |
+| Afanasy Nikitin | 文艺复兴 | 标准版：在外国领土激活，此城每有一种已建成区域类型给予 100 金币；联动/替代版：将所在格奢侈品复制1份赠予首都，2 次使用次数 | XML修饰器（按区域类型给金×14条 / 复制奢侈），两版本文件并存 |
+| Jacob Kettler | 文艺复兴 | 指定港口的金币邻接加成额外提供等量生产力，2 次使用次数；〔More Maritime 联动版改为：赠予1个开拓者+1艘护卫舰，指定滨水区提供等同食物邻接的金币〕 | XML修饰器（邻接映射），ActionCharges=2；另有联动变体 |
+| Miura Anjin | 文艺复兴 | 任意政体 +1 外交政策槽 | XML修饰器（政策槽） |
+| Alexander Hamilton | 工业 | 任意政体 +1 经济政策槽 | XML修饰器（政策槽） |
+| Cecil Rhodes | 工业 | 立即创建1个红衣军单位；你所有位于非首都大陆且拥有总督的城市 +20% 金币（永久） | XML修饰器（赠单位+条件城市金%） |
+| Jean Neuhaus II | 工业 | 解锁"巧克力工坊"（Chocolaterie）——昂贵专属建筑，提供文化并赠予1份"果仁糖"奢侈品（+4 宜居度） | XML修饰器+专属建筑（依赖mod建筑/资源） |
+| Shibusawa Eiichi | 工业 | 此城每种供电资源（煤/石油/铀）为该城每种已改良奢侈品 +1 宜居度（永久） | XML修饰器（资源-宜居联动×3条） |
+| John Pierpont Morgan | 现代 | 每座银行 +1 外交支持/回合（永久） | XML修饰器（建筑外交支持） |
+| Peter Carl Faberge | 现代 | 创造 2 份"法贝热彩蛋"奢侈品，各 +5 宜居度 | XML修饰器（专属资源×2，依赖mod资源） |
+
+### 大作家（10 位）
+
+| 伟人 | 时代 | 完整效果/巨作 | 实现方式 |
+|---|---|---|---|
+| Augustine of Hippo | 古典 | 2部著作：《Confessions》《The City of God》（各4文化4旅游） | 纯巨作（ActionCharges=0，巨作直挂伟人） |
+| Hugo Grotius | 文艺复兴 | +1 外交胜利点 | XML修饰器 |
+| Friedrich Nietzsche | 工业 | 2部著作：《Thus Spoke Zarathustra》《Will to power》 | 纯巨作 |
+| Jean-Jacques Rousseau | 工业 | +1 外交胜利点 | XML修饰器 |
+| Voltaire | 工业 | +1 外交胜利点 | XML修饰器 |
+| H. P. Lovecraft | 现代 | 2部著作：《The Call of Cthulhu》《The Shadow over Innsmouth》 | 纯巨作 |
+| Martin Heidegger | 现代 | 2部著作：《Being and Time》《Poetry, language, thought》 | 纯巨作 |
+| Robert E. Howard | 现代 | 2部著作：《Conan the Barbarian (Series)》《Solomon Cane (Series)》 | 纯巨作 |
+| Robert Schuman（代号DESCARTES） | 原子能 | +1 外交胜利点（"和平愿景"可选包） | XML修饰器 |
+| Mahbub ul Haq（代号CICERO，巨作为西塞罗著作《De Oratore》《De re publica》） | 原子能 | +1 外交胜利点（"和平愿景"可选包） | XML修饰器+巨作表 |
+
+### 大艺术家（2 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| André Le Nôtre | 文艺复兴 | 该城所有地块 +1 魅力 | 原版修饰器 GREATPERSON_CITY_APPEAL_SMALL |
+| Lancelot Brown | 工业 | 市中心每相邻1个城市公园 +2 文化；若相邻3个城市公园，额外 +3 文化（永久） | XML修饰器（改良邻接产出×2条） |
+
+### 大探险家（JNR 联动，2 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Ahmad ibn Majid | 文艺复兴 | 所有海军单位 +2 移动力（永久能力） | XML修饰器+单位能力（依赖JNR大探险家类别） |
+| Vitus Bering | 文艺复兴 | 冻土地块为港口提供 +1 金币邻接；雪原地块为港口提供 +3 文化邻接（永久） | XML修饰器（地形邻接产出×2条，依赖JNR类别） |
+
+---
+
+## 4. Great Sovereigns 大统治者伟人（2973448849）
+
+实现方式：新增 GREAT_PERSON_CLASS_GreatSovereigns 类别 + 全套 XML 修饰器/单位能力；部分效果依赖 mod 专属资源（Cowrie）、专属建筑（Arsenal 等）、JNR 联动（Isabella）。招募依赖 mod 新增的专属项目/政策卡/万神殿。32 位全部效果如下（内部代号 FIRST~SIXTEENTH 等，按实际显示名记录）：
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Solomon | 古典 | 立即在此城建成1座神庙；神庙 +2 生产力（永久） | XML修饰器（赠建筑+建筑产出） |
+| Marcus Aurelius | 古典 | 触发所有中世纪时代市政的鼓舞 | XML修饰器（整时代市政鼓舞） |
+| Ptolemy | 古典 | 给予 100 点奇观建造生产力；每派往城邦1名使者 +1 文化（永久） | XML修饰器（奇观锤+使者产出） |
+| Asoka | 古典 | 每座城市：每个专业区域 +1 信仰、+1 食物（永久） | XML修饰器（区域产出×2条） |
+| Frederick II | 中世纪 | 任意政体 +1 经济政策槽 | XML修饰器（政策槽） |
+| Charlemagne | 中世纪 | 任意政体 +1 军事政策槽 | XML修饰器（政策槽） |
+| Harun al-Rashid | 中世纪 | 黄金时代期间：商路每经过6格 +1 科技（永久，条件触发） | XML修饰器（商路里程科技） |
+| Al-Hakam II | 中世纪 | 拥有祭祀建筑的城市可额外建造1座大教堂、清真寺或会堂，不受祭祀信条限制 | XML修饰器（额外祭祀建筑×3条） |
+| Alfred the Great | 中世纪 | 建造军械库（Arsenal）时赠予1个免费海军单位；军械库从相邻区域获得 +1 科技、+1 生产力（永久） | XML修饰器（建筑赠单位+邻接产出） |
+| Enrico Dandolo | 中世纪 | 为首都宫殿增加 2 件圣物及圣物槽；商人单位经过外国城市地块时使该城 -20 忠诚 | XML修饰器（宫殿圣物+商队减忠诚） |
+| Parameswara | 中世纪 | 指定城市每回合额外 +1 次远程攻击；每有1座港口/商业中心/外交区，该城 +5% 金币、+5% 信仰（永久） | XML修饰器（城防+按区域%产出） |
+| Ramkhamhaeng | 中世纪 | 你每宗主1种不同类型的城邦，所有城市 +1 人口（按6种城邦类型逐一判定） | XML修饰器（城邦类型→人口×6条） |
+| Vytautas | 中世纪 | 指定城市每回合 +8 忠诚，并创建1个带免费晋升的骑士单位；2 次使用次数 | XML修饰器（忠诚+赠单位），ActionCharges=2 |
+| Akbar | 文艺复兴 | 任意政体 +1 万能政策槽 | XML修饰器（政策槽） |
+| Askia | 文艺复兴 | 征服的拥有纪念碑的城市给予1份"Cowrie（贝币）"专属奢侈品（+4 宜居度）；劫掠区域收益翻倍（永久） | XML修饰器（专属资源+劫掠×2） |
+| Isabella I | 文艺复兴 | 赠予1个免费大探险家（JNR联动）；商人单位 +2 视野，海军单位击杀敌人时产生大探险家点数〔替代版：每座圣地建筑 +1 大探险家点/回合〕 | XML修饰器（JNR联动+单位加成×6条） |
+| Ismail I | 文艺复兴 | 黑暗时代期间用骑兵单位攻下城市时将其转化为你的主流宗教（永久能力）；黄金时代期间艺术巨作基础文化产出翻倍 | XML修饰器+单位能力 |
+| Julius II | 文艺复兴 | 给予 455 点奇观建造生产力 | XML修饰器（奇观锤） |
+| Lorenzo the Magnificent | 文艺复兴 | 此城所有文艺复兴时代奇观增加 2 个艺术巨作槽（覆盖8座指定奇观）；黄金时代期间赠予1个免费大艺术家 | XML修饰器（奇观槽位×8条+条件赠伟人） |
+| Louis XIV | 文艺复兴 | 所有政府广场建筑增加 3 个艺术巨作槽；放置其中的雕塑文化产出 ×3（永久） | XML修饰器（槽位×10条+巨作产出×10条） |
+| Maria Theresa | 文艺复兴 | 城邦提供的每种独特改良（摩艾/那斯卡/卡霍基亚等9种）：所有城市 +20% 大艺术家点数、+20% 大音乐家点数/回合（永久） | XML修饰器（城邦改良→伟人点%×18条） |
+| Skanderbeg | 文艺复兴 | 立即击杀2格范围内所有敌单位；你的2格范围内陆地战斗单位恢复全部移动力与攻击能力 | XML修饰器（范围杀伤+范围恢复） |
+| Ulug Beg | 文艺复兴 | 每放置1个新学院区域时 +200 科技 | XML修饰器（区域放置触发科技） |
+| Mehmet Ali | 工业 | 所有单位升级金币费用 -100%（免费升级）；赠予1项随机免费科技 | XML修饰器（升级折扣+随机科技） |
+| Meiji | 工业 | 以工业区或社区替换农场时获得一笔金币；工业区与社区：每个相邻区域 +2 食物（永久） | XML修饰器（替换触发金币+邻接产出×4条） |
+| Otto von Bismark | 工业 | 成为指定城邦的宗主国并移除其他所有玩家的使者；当前政体每张外交政策卡 +1 外交支持/回合（永久） | XML修饰器（城邦宗主+政策卡外交支持） |
+| Prithvi Narayan Shah | 工业 | 所有近战与远程陆地单位 +3 战斗力；在外国大陆作战时额外 +3 战斗力（永久能力） | XML修饰器+单位能力×2 |
+| Ataturk | 现代 | 给予 400 点生产力（可用于任何建造或单位训练）；3 次使用次数 | XML修饰器（通用锤），ActionCharges=3 |
+| Haile Selassie | 现代 | +2 外交胜利点 | XML修饰器 |
+| Lee Kuan Yew | 原子能 | 大商人使用次数 +1（永久）〔Tycoons 联动版追加：立即创建1个"Investor"单位〕 | XML修饰器（伟人次数；另有联动变体） |
+| Zayed bin Sultan Al Nahyan | 原子能 | 你的城市每拥有1种不同的供电战略资源（煤/石油/铀），该城 +20% 金币（永久） | XML修饰器（资源→金%×3条） |
+| Rainier III | 信息 | 你当前每多持有1份富余奢侈品，给予 200 旅游业绩；每座滨水区/游乐码头建筑为海滨度假村 +60% 旅游（最高+300%） | XML修饰器（奢侈份数旅游+建筑旅游%×5条） |
+
+> 可选配置（默认关闭）：把原版拿破仑（+1万能政策槽）、古斯塔夫二世（+1军事政策槽）改列为大统治者。
+
+---
+
+## 5. AOM Equally Great Scientists 平等伟人科学家（1335152349）
+
+实现方式：删除原版科学家后重建（Delete+Insert）；新增"科学巨作"（GreatWork of Science）对象类型；专属世界唯一建筑；UI 替换。科学巨作产出见各行。
+
+### 新增大科学家（8 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Theophrastus | 古典 | 该学院区域的科技邻接加成同时提供等量食物（永久） | XML修饰器（邻接映射） |
+| William of Ockham | 中世纪 | 创作科学巨作《Occam's Razor》（+2 科技、+1 信仰） | 科学巨作系统 |
+| Fritz Haber | 现代 | 农场地块 +1 食物/回合（永久） | XML修饰器（改良产出） |
+| Marie Curie | 现代 | 立即建成"镭研究所"——学院区专属唯一建筑：+3 科技、+2 生产力、+1 大科学家点/回合 | 专属建筑（依赖mod建筑） |
+| Satyendra Nath Bose | 现代 | 创作科学巨作《Planck's Law and Hypothesis of Light Quanta》（+6 科技） | 科学巨作系统 |
+| Wilhelm Röntgen | 现代 | 一次性获得 1140 科技 | XML修饰器（一次性科技，随速度缩放） |
+| Stephen Hawking | 原子能 | 创作科学巨作《A Brief History of Time》（+4 科技、+3 文化） | 科学巨作系统 |
+| Tim Berners-Lee | 信息 | 一次性获得 1850 科技 | XML修饰器（一次性科技，随速度缩放） |
+
+### 修改的原版大科学家（17 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| 伽利略 Galileo | 文艺复兴 | 创作科学巨作《Galileo's Middle Finger》（+4 科技） | 科学巨作系统（替换原效果） |
+| 牛顿 Newton | 文艺复兴 | 创作科学巨作《Principia》（+4 科技） | 科学巨作系统 |
+| 达尔文 Darwin | 工业 | 创作科学巨作《The Origin of Species》（+5 科技） | 科学巨作系统 |
+| 诺贝尔 Nobel | 现代 | 创作科学巨作《Nobel Prize》（+3 文化、+2 科技） | 科学巨作系统 |
+| 图灵 Turing | 现代 | 创作科学巨作《The Chemical Basis of Morphogenesis》（+6 科技） | 科学巨作系统 |
+| 爱因斯坦 Einstein | 现代 | 创作科学巨作《The Annus Mirabilis Papers》（+6 科技） | 科学巨作系统 |
+| 薛定谔 Schrödinger | 原子能 | 创作科学巨作《Schrödinger's Cat》（+7 科技） | 科学巨作系统 |
+| 萨根 Sagan | 信息 | 创作科学巨作《Voyager Record》（+8 文化） | 科学巨作系统 |
+| 希帕提娅 Hypatia | 古典 | 创作科学巨作《Hypatia's Astrolabe》（+2 科技） | 科学巨作系统 |
+| 扎哈拉维 al-Zahrawi | 中世纪 | 创作科学巨作《Kitab Al-tasrif》（+2 科技） | 科学巨作系统 |
+| 欧几里得 Euclid | 古典 | 一次性获得 120 科技 | XML修饰器（一次性科技） |
+| 海亚姆 Khayyam | 中世纪 | 一次性获得 150 科技；该学院区域的科技邻接加成同时提供等量文化（永久） | XML修饰器（一次性科技+邻接映射） |
+| 杜夏特莱 du Chatelet | 文艺复兴 | 一次性获得 600 科技 | XML修饰器（一次性科技） |
+| 克沃莱克 Kwolek | 信息 | 发明凯夫拉：所有单位 +10 防御战斗力（永久） | XML修饰器（全局防御） |
+| 门捷列夫 Mendeleev | 工业 | 立即建成"门捷列夫度量衡研究所"——学院区专属唯一建筑：+5 科技、+1 大科学家点/回合 | 专属建筑 |
+| 萨拉姆 Salam | 信息 | 立即建成"阿卜杜斯·萨拉姆国际理论物理中心"——学院区专属唯一建筑：+9 科技、+1 大科学家点/回合 | 专属建筑 |
+| 阿耶波多 Aryabhata | 古典 | 立即建成"那兰陀大学"——学院区专属唯一建筑：+2 科技、+1 大科学家点/回合 | 专属建筑 |
+
+---
+
+## 6. AOM Equally Great Engineers 平等伟人工程师（1373931635）
+
+实现方式：删原版重建；新增"工程巨作"对象类型；专属奇观/建筑；达·芬奇改类别为大艺术家；UI 替换。
+
+### 新增大工程师（10 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Banū Mūsā | 中世纪 | 创作工程巨作《Book of Ingenious Devices》（+8 生产力） | 工程巨作系统 |
+| Francesco di Giorgio | 文艺复兴 | 立即在此城建成的远古、中世纪、文艺复兴城墙 | XML修饰器（赠三级城墙） |
+| Johannes Gutenberg | 文艺复兴 | 立即在工业区建成"古登堡工坊"——专属奇观：+3 信仰、+3 生产力 | 专属奇观（依赖mod奇观） |
+| Frederick Olmsted | 工业 | 立即在市中心建成"中央公园"——专属奇观：+2 宜居度 | 专属奇观 |
+| Isambard Brunel | 工业 | 立即在市中心建成"大西部铁路"——专属奇观：+2 文化、+6 生产力 | 专属奇观 |
+| Alexander Fleming | 现代 | 单一城市立即 +3 人口 | XML修饰器（加人口） |
+| Hedy Lamarr | 现代 | 发明"保密通信系统"：所有现代、原子能、信息时代的海军袭击者与海军远程单位 +5 战斗力（永久） | XML修饰器（单位战力） |
+| Fazlur Rahman Khan | 原子能 | 该城市 +4 住房 | 原版修饰器 GREATPERSON_CITY_HOUSING_LARGE |
+| Gurmukh Sarkaria | 原子能 | 立即在工业区建成"伊泰普水坝"——专属奇观：+20 生产力 | 专属奇观 |
+| Mars Exploration Rover Team | 信息 | 太空竞赛项目 +100% 生产力（永久） | XML修饰器（项目锤%） |
+
+### 修改的原版大工程师（4 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| 毕昇 Bi Sheng | 中世纪 | 该工业区的生产力邻接加成同时提供等量文化（永久） | XML修饰器（邻接映射） |
+| 简·德鲁 Jane Drew | 原子能 | 该城市 +3 宜居度 | XML修饰器（宜居，Amount=3） |
+| 罗布林 Roebling | 原子能 | 立即在市中心建成"布鲁克林大桥"——专属奇观：+4 文化、+4 金币 | 专属奇观 |
+| 达·芬奇 Leonardo da Vinci | 文艺复兴 | **类别改为大艺术家**；创作3件艺术巨作：《Mona Lisa》《Salvator Mundi》《Lady with an Ermine》（各 +3 文化） | 改类别+艺术巨作（原工程师版删除） |
+
+---
+
+## 7. AOM Equally Great Merchants 平等伟人商人（1356636218）
+
+实现方式：删原版重建；新增6种专属奢侈品+5座专属建筑；UI 替换。
+
+### 新增大商人（11 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| Hippalus | 古典 | 给予 1 份"胡椒"专属奢侈品（+4 宜居度） | XML修饰器+专属资源 |
+| Kanishka | 古典 | 商路容量 +1；赠予1个免费商人单位；+100 信仰 | 原版修饰器组合（商路容量+免费商人+FAITH_SMALL） |
+| Dick Whittington | 中世纪 | 立即在市中心建成"惠廷顿学院"——专属建筑：+3 住房 | 专属建筑 |
+| Ichtacka Pochteca | 中世纪 | 给予 1 份"阿兹特克绿松石"专属奢侈品（+4 宜居度） | XML修饰器+专属资源 |
+| Joseph of Spain | 中世纪 | 给予 1 份"藏红花"专属奢侈品（+4 宜居度） | XML修饰器+专属资源 |
+| James Lancaster | 文艺复兴 | 立即建成"东印度公司"——专属建筑：商路目的地每种奢侈品 +1 金币 | 专属建筑 |
+| David Ogilvy | 现代 | 任意政体 +1 万能政策槽 | XML修饰器（政策槽） |
+| David Sarnoff | 现代 | 立即建成"全国广播公司（NBC）"——专属奇观：+5 金币/回合，且为10格内任意市中心 +1 宜居度；广播塔为6格内每座城市 +1 宜居（永久） | 专属奇观+XML修饰器（建筑范围宜居） |
+| Lizzie Magie | 现代 | 给予 2 份"桌面游戏"专属奢侈品（各 +4 宜居度） | XML修饰器+专属资源 |
+| Raymond Rubicam | 原子能 | 该商业中心的金币邻接加成同时提供等量文化（永久）；另含商路容量 +1 与对有商路文明的旅游加成（原版修饰器） | XML修饰器（邻接映射）+原版修饰器 |
+| Jeff Bezos | 信息 | 给予 2 份"电子书"奢侈品（各 +6 宜居度） | XML修饰器+专属资源 |
+
+### 修改的原版大商人（5 位）
+
+| 伟人 | 时代 | 完整效果 | 实现方式 |
+|---|---|---|---|
+| 美第奇 Medici | 文艺复兴 | 立即建成"美第奇银行"——专属建筑：+2 金币、+1 大商人点/回合，并带 2 个万能巨作槽 | 专属建筑 |
+| 托达尔·马尔 Todar Mal | 文艺复兴 | 此城农场地块 +1 金币/回合（永久） | XML修饰器（单城改良产出） |
+| 阿斯特 Astor | 工业 | 吞并相邻地块（10 次使用次数） | 原版修饰器 GREATPERSON_GRANT_PLOT，ActionCharges=10 |
+| 布里德洛夫 Breedlove | 现代 | 给予 2 份"护发产品"专属奢侈品（各 +4 宜居度） | XML修饰器+专属资源 |
+| 富格尔 Fugger | 文艺复兴 | 立即在此区域建成"富格莱"——专属建筑：+3 住房 | 专属建筑 |
