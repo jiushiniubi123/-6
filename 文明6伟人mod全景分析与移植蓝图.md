@@ -1,21 +1,4 @@
 # 文明6 伟人 Mod 完整效果事实提取
-
-> 数据来源：/tmp/civ6mod/ 下 7 个 mod 的源数据文件（.sql/.xml）直接提取，用于补全《文明6伟人mod全景分析与移植蓝图》中被"…"截断或标"—"的记录。
-> 格式：伟人名 | 时代 | 完整效果（含数值）| 效果实现方式。
-> 所有效果文本均为 mod 文件中的英文原文翻译/直录，数值取自 ModifierArguments / SQL 参数。
-
-## 数据缺失/需说明的记录
-
-1. **Sumus Magnus - Francesco Bartolomeo Rastrelli**：源文件中**没有**普通工程师版定义，只有 Urban Complexity 联动版（`X_URBAN_COMPLEXITY_Rastrelli.xml`），且该版本中他的类别是**大艺术家**（工业时代），效果是政府广场建筑+4文化。文档中"工程师 | 工业 | —"的记录在源数据里不存在对应形态。
-2. **Team PVP 大音乐家**：分析文档所列"阿里斯托芬/沃尔夫拉姆/纪尧姆·德·马肖/蒙特威尔第/杜阿尔特·罗博"与 mod 实际文本**完全不符**。mod 实际 5 位音乐家是：俞伯牙、李隆基、关汉卿、汤应曾、托马斯·路易斯（见下文 §1）。
-3. **Team PVP 巨作数量**：文艺复兴作家每人只产 **1** 部巨作（SQL 中 `GreatWorksNum=1`），中世纪音乐家每人只产 **1** 部；其余时代作家/音乐家每人 2 部。文档"各产两部"的假设不成立。
-4. **Sumus Magnus - "西塞罗"（内部代号 CICERO）**：实际显示名为 **Mahbub ul Haq**（LOC 文本与 Pedia 均为此人），但两件巨作名是西塞罗的著作；"罗伯特·舒曼"（代号 DESCARTES）的巨作名则是笛卡尔的著作。作者人名与巨作混搭，如实记录。
-5. **Nyguita - Eumenes / Wallenstein / Túpac Yupanqui / Kountouriotis** 四人：源数据使用**原版**修饰器 `GREATPERSON_GOVERNOR_POINTS`（+1 总督头衔），mod 内无自定义文本。
-6. **Nyguita - Sergius Orata**：使用原版修饰器 `GREATPERSON_CITY_HOUSING_SMALL`（+2 住房）+ `GREATPERSON_CITY_AMENITIES_SMALL`（+1 宜居）。
-7. Sumus Magnus 的专属建筑（Templar Vault / Paper Maker / Chocolaterie）、专属资源（Pepper/Nutmeg/Faberge Egg/Praline/Beaver）、可解锁改良（Chateau/Mission/Polder）为伟人效果的依赖物，已在对应行注明。
-
----
-
 ## 1. Team PVP More GreatPeople 伟人补充包（3497524344）
 
 实现方式：纯 SQL 巨作表（`GreatWorks` + `GreatWork_YieldChanges`），著作/乐曲基础产出 4 文化 + 旅游（文艺复兴作家 4 文化 1 部；音乐家文艺复兴 2 部各 4 文化，中世纪 1 部）。无修饰器、无 Lua。
